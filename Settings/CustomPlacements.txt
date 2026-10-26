@@ -1,0 +1,480 @@
+Cursed Festival,476,234
+Cursed Festival,424,203
+Cursed Festival,425,236
+Cursed Festival,425,251
+Cursed Festival,428,281
+Cursed Festival,429,297
+Cursed Festival,432,334
+Cursed Festival,435,353
+Cursed Festival,435,383
+Cursed Festival,434,416
+Cursed Festival,432,441
+Cursed Festival,425,465
+Cursed Festival,426,402
+Cursed Festival,416,381
+Cursed Festival,406,354
+Cursed Festival,402,326
+Cursed Festival,398,285
+Cursed Festival,397,249
+Cursed Festival,415,188
+Cursed Festival,441,159
+Cursed Festival,412,148
+Cursed Festival,401,172
+Cursed Festival,385,227
+Cursed Festival,377,258
+Cursed Festival,386,336
+Cursed Festival,387,375
+Cursed Festival,386,411
+Cursed Festival,380,450
+Cursed Festival,362,474
+Cursed Festival,358,428
+Cursed Festival,355,405
+Cursed Festival,358,359
+Cursed Festival,362,333
+Cursed Festival,365,302
+Cursed Festival,368,231
+Cursed Festival,376,197
+Cursed Festival,390,158
+Cursed Festival,470,207
+Cursed Festival,473,266
+Cursed Festival,468,299
+Cursed Festival,468,315
+Cursed Festival,472,340
+Cursed Festival,473,393
+Cursed Festival,472,426
+Cursed Festival,485,459
+Cursed Festival,596,471
+Cursed Festival,670,471
+Cursed Festival,704,464
+Cursed Festival,740,457
+Cursed Festival,756,491
+Cursed Festival,723,510
+Cursed Festival,666,522
+Cursed Festival,580,499
+Cursed Festival,549,499
+Cursed Festival,516,500
+Cursed Festival,500,510
+Cursed Festival,472,499
+Cursed Festival,467,363
+Cursed Festival,482,282
+Cursed Festival,464,168
+Cursed Festival,426,167
+Cursed Festival,392,476
+Cursed Festival,366,490
+Cursed Festival,413,410
+Cursed Festival,400,234
+Cursed Festival,400,216
+Custom,240,319
+Custom,259,306
+Custom,286,280
+Custom,330,261
+Custom,335,280
+Custom,312,303
+Custom,295,325
+Custom,285,341
+Custom,266,331
+Custom,329,305
+Custom,367,260
+Custom,352,267
+Custom,382,265
+Custom,412,256
+Custom,430,258
+Custom,478,248
+Custom,536,292
+Custom,556,308
+Custom,578,307
+Custom,588,340
+Custom,612,353
+Custom,638,327
+Custom,620,313
+Custom,603,298
+Custom,598,283
+Custom,581,261
+Custom,558,251
+Custom,543,247
+Custom,512,243
+Custom,523,271
+Custom,539,307
+Custom,545,323
+Custom,556,337
+Custom,563,363
+Custom,563,382
+Custom,576,398
+Custom,605,407
+Custom,613,393
+Custom,626,373
+Custom,608,373
+Custom,578,374
+Custom,591,361
+Custom,517,358
+Custom,492,342
+Custom,482,329
+Custom,449,312
+Custom,422,312
+Custom,398,317
+Custom,412,331
+Custom,430,348
+Custom,477,370
+Custom,508,371
+Custom,364,329
+Custom,355,362
+Custom,350,393
+Custom,351,413
+Custom,273,426
+Custom,287,396
+Custom,284,380
+Custom,364,277
+Fool's Hunt,770,410
+Fool's Hunt,494,483
+Fool's Hunt,279,506
+Fool's Hunt,175,555
+Fool's Hunt,204,-7
+Fool's Hunt,178,521
+Fool's Hunt,193,525
+Fool's Hunt,353,548
+Fool's Hunt,753,485
+Fool's Hunt,876,454
+Mountain Temple,559,505
+Mountain Temple,534,377
+Mountain Temple,529,400
+Mountain Temple,551,393
+Mountain Temple,528,332
+Mountain Temple,561,359
+Mountain Temple,554,332
+Mountain Temple,563,380
+Mountain Temple,555,413
+Mountain Temple,554,433
+Mountain Temple,558,453
+Mountain Temple,560,474
+Mountain Temple,560,490
+Mountain Temple,530,351
+Mountain Temple,519,423
+Mountain Temple,516,448
+Mountain Temple,509,471
+Mountain Temple,519,367
+Mountain Temple,302,215
+Mountain Temple,336,215
+Mountain Temple,367,218
+Mountain Temple,388,216
+Mountain Temple,404,214
+Mountain Temple,460,217
+Mountain Temple,482,224
+Mountain Temple,503,248
+Mountain Temple,525,264
+Mountain Temple,541,281
+Mountain Temple,553,298
+Mountain Temple,564,314
+Mountain Temple,583,334
+Mountain Temple,585,350
+Mountain Temple,591,395
+Mountain Temple,598,414
+Mountain Temple,602,440
+Mountain Temple,603,473
+Mountain Temple,435,202
+Mountain Temple,375,198
+Mountain Temple,339,194
+Mountain Temple,318,202
+Mountain Temple,285,221
+Mountain Temple,498,232
+Mountain Temple,522,313
+Mountain Temple,510,277
+Mountain Temple,517,291
+Mountain Temple,523,498
+Mountain Temple,528,480
+Mountain Temple,531,452
+Mountain Temple,533,434
+Mountain Temple,513,330
+Mountain Temple,513,346
+Mountain Temple,513,386
+Mountain Temple,513,404
+Mountain Temple,509,489
+Mountain Temple,475,262
+Mountain Temple,582,318
+Mountain Temple,594,374
+Mountain Temple,572,410
+Mountain Temple,571,429
+Mountain Temple,576,484
+Mountain Temple,561,521
+Mountain Temple,490,492
+Mountain Temple,544,477
+Mountain Temple,566,344
+Mountain Temple,250,242
+Mountain Temple,235,254
+Mountain Temple,201,284
+Mountain Temple,192,299
+Mountain Temple,236,233
+Mountain Temple,281,239
+Shibuya District,541,173
+Shibuya District,531,199
+Shibuya District,518,221
+Shibuya District,500,247
+Shibuya District,474,261
+Shibuya District,449,270
+Shibuya District,417,275
+Shibuya District,379,275
+Shibuya District,356,275
+Shibuya District,312,274
+Shibuya District,288,270
+Shibuya District,267,255
+Shibuya District,244,246
+Shibuya District,229,238
+Shibuya District,209,209
+Shibuya District,181,194
+Shibuya District,189,297
+Shibuya District,167,329
+Shibuya District,164,348
+Shibuya District,160,365
+Shibuya District,145,397
+Shibuya District,122,429
+Shibuya District,113,450
+Shibuya District,102,469
+Shibuya District,120,469
+Shibuya District,139,459
+Shibuya District,149,436
+Shibuya District,160,401
+Shibuya District,174,375
+Shibuya District,206,330
+Shibuya District,218,320
+Shibuya District,204,355
+Shibuya District,173,431
+Shibuya District,207,407
+Shibuya District,227,380
+Shibuya District,248,354
+Shibuya District,276,343
+Shibuya District,295,345
+Shibuya District,285,369
+Shibuya District,313,363
+Shibuya District,339,354
+Shibuya District,341,370
+Shibuya District,364,409
+Shibuya District,381,357
+Shibuya District,394,379
+Shibuya District,428,406
+Shibuya District,425,375
+Shibuya District,440,341
+Shibuya District,470,334
+Shibuya District,468,364
+Shibuya District,453,389
+Shibuya District,553,279
+Shibuya District,551,298
+Shibuya District,533,344
+Shibuya District,527,380
+Shibuya District,521,396
+Shibuya District,495,403
+Shibuya District,464,407
+Shibuya District,476,393
+Shibuya District,489,364
+Shibuya District,495,348
+Shibuya District,499,332
+Shibuya District,397,342
+Shibuya District,426,321
+Shibuya District,405,328
+Shibuya District,415,350
+Shibuya District,356,370
+Shibuya District,515,420
+Shibuya District,394,407
+Shibuya District,303,391
+Shibuya District,276,385
+Shibuya District,261,379
+Shibuya District,234,329
+Shibuya District,331,284
+Shibuya District,528,181
+Shibuya District,399,237
+Shibuya District,406,212
+Shibuya District,438,193
+Shibuya District,486,187
+Shibuya District,485,217
+Shibuya District,448,241
+Shibuya District,581,259
+Shibuya District,518,342
+Shibuya District,570,337
+Shibuya District,628,173
+Shibuya District,623,213
+Shibuya District,579,284
+Shibuya District,159,145
+Shibuya District,147,165
+Shibuya District,126,162
+Shibuya District,160,175
+Spirit Town,422,226
+Spirit Town,420,244
+Spirit Town,416,272
+Spirit Town,416,287
+Spirit Town,416,310
+Spirit Town,411,327
+Spirit Town,405,348
+Spirit Town,393,327
+Spirit Town,388,302
+Spirit Town,386,277
+Spirit Town,390,248
+Spirit Town,400,216
+Spirit Town,421,189
+Spirit Town,438,162
+Spirit Town,456,140
+Spirit Town,471,130
+Spirit Town,453,155
+Spirit Town,439,193
+Spirit Town,397,369
+Spirit Town,441,100
+Spirit Town,425,114
+Spirit Town,404,126
+Spirit Town,394,150
+Spirit Town,380,179
+Spirit Town,369,190
+Spirit Town,357,200
+Spirit Town,348,218
+Spirit Town,352,238
+Spirit Town,351,257
+Spirit Town,349,276
+Spirit Town,348,329
+Spirit Town,323,370
+Spirit Town,330,340
+Spirit Town,335,319
+Spirit Town,337,302
+Spirit Town,337,286
+Spirit Town,337,239
+Spirit Town,373,159
+Spirit Town,380,144
+Spirit Town,454,81
+Spirit Town,413,104
+Spirit Town,396,111
+Spirit Town,377,126
+Spirit Town,358,157
+Spirit Town,334,268
+Spirit Town,322,355
+Spirit Town,390,388
+Spirit Town,377,405
+Spirit Town,352,444
+Spirit Town,366,434
+Spirit Town,413,202
+Spirit Town,423,164
+Spirit Town,517,121
+Spirit Town,556,109
+Spirit Town,535,115
+Spirit Town,481,73
+Storm Hideout,510,358
+Storm Hideout,498,334
+Storm Hideout,463,308
+Storm Hideout,440,297
+Storm Hideout,418,298
+Storm Hideout,394,299
+Storm Hideout,377,312
+Storm Hideout,362,341
+Storm Hideout,444,316
+Storm Hideout,279,552
+Storm Hideout,381,255
+Storm Hideout,466,248
+Storm Hideout,510,236
+Storm Hideout,540,230
+Storm Hideout,568,227
+Storm Hideout,588,244
+Storm Hideout,596,287
+Storm Hideout,621,325
+Storm Hideout,622,350
+Storm Hideout,598,369
+Storm Hideout,590,342
+Storm Hideout,580,318
+Storm Hideout,571,299
+Storm Hideout,545,288
+Storm Hideout,529,280
+Storm Hideout,502,263
+Storm Hideout,424,250
+Storm Hideout,487,261
+Storm Hideout,463,333
+Storm Hideout,401,314
+Storm Hideout,373,330
+Storm Hideout,356,255
+Storm Hideout,332,282
+Storm Hideout,318,294
+Storm Hideout,308,310
+Storm Hideout,295,342
+Storm Hideout,291,360
+Storm Hideout,285,381
+Storm Hideout,286,401
+Storm Hideout,278,417
+Storm Hideout,262,439
+Storm Hideout,226,469
+Storm Hideout,242,455
+Storm Hideout,258,339
+Storm Hideout,290,305
+Storm Hideout,306,285
+Storm Hideout,331,255
+Storm Hideout,314,270
+Storm Hideout,369,266
+Storm Hideout,354,284
+Storm Hideout,362,425
+Storm Hideout,351,366
+Storm Hideout,381,349
+Storm Hideout,480,333
+Walled City,166,515
+Walled City,185,516
+Walled City,205,516
+Walled City,227,516
+Walled City,244,518
+Walled City,264,520
+Walled City,284,517
+Walled City,177,500
+Walled City,203,493
+Walled City,224,494
+Walled City,265,498
+Walled City,283,499
+Walled City,381,326
+Walled City,375,342
+Walled City,372,362
+Walled City,368,382
+Walled City,362,410
+Walled City,360,432
+Walled City,341,415
+Walled City,334,399
+Walled City,322,385
+Walled City,330,369
+Walled City,352,356
+Walled City,18,363
+Walled City,18,383
+Walled City,22,408
+Walled City,30,438
+Walled City,37,453
+Walled City,45,423
+Walled City,48,393
+Walled City,51,375
+Walled City,161,567
+Walled City,177,568
+Walled City,204,568
+Walled City,231,569
+Walled City,147,560
+Walled City,166,487
+Walled City,244,501
+Walled City,161,552
+Walled City,195,555
+Walled City,154,504
+Walled City,116,500
+Walled City,100,499
+Walled City,135,498
+Walled City,101,543
+Walled City,91,558
+Walled City,105,564
+Walled City,121,550
+Walled City,119,570
+Walled City,405,500
+Walled City,424,502
+Walled City,444,503
+Walled City,450,474
+Walled City,450,457
+Walled City,450,439
+Walled City,450,423
+Walled City,420,480
+Walled City,408,468
+Walled City,403,441
+Walled City,405,425
+Walled City,407,410
+Walled City,409,382
+Walled City,412,359
+Walled City,416,328
+Walled City,419,307
+Walled City,421,292
+Walled City,424,271
+Walled City,424,404
+Walled City,433,417
+Walled City,439,390
+Walled City,440,356
+Walled City,439,323
+Walled City,439,297

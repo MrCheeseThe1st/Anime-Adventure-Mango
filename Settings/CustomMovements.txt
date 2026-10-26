@@ -1,0 +1,11 @@
+﻿Mountain Temple,s,1125,0
+Mountain Temple,s,672,437
+Mountain Temple,s,125,188
+Spirit Town,s,2469,0,938
+Spirit Town,a,3969,296,3703
+Spirit Town,s,1546,110,7782
+Storm Hideout,w,1687,0,2625
+Storm Hideout,a,2110,547,4859
+Storm Hideout,w,2141,-2110,4859
+Storm Hideout,w,4515,375,7375
+Storm Hideout,d,4547,-4515,7375
