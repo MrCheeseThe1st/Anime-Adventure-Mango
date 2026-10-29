@@ -1,0 +1,7 @@
+Logs/
+backups/
+Settings/Modes/
+Settings/Export/
+Settings/first_run.dat
+Settings_Backup_*/
+update_extract_*/

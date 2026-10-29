@@ -5,7 +5,6 @@ global stageStartTime := A_TickCount
 global cachedCardPriorities := Map()
 LoadKeybindSettings()  ; Load saved keybinds
 CheckForUpdates()
-StartRapidOcr()
 UpdatePlacementListView()
 CheckFirstRun()
 Hotkey(F1Key, (*) => moveRobloxWindow())
@@ -15,7 +14,7 @@ Hotkey(F4Key, (*) => TogglePause())
 Hotkey(";", (*) => TogglePause()) ; Second pause key
 
 F5:: {
-    SetRegion()
+   SetRegion()
 }
 
 F6:: {
@@ -23,7 +22,7 @@ F6:: {
 }
 
 F7:: {
-    CopyMouseCoords(true)
+   CopyMouseCoords(true)
 }
 
 F8:: {
@@ -39,7 +38,7 @@ StartMacro(*) {
         return
     }
     if (StartsInLobby(ModeDropdown.Text) || StartsInLobby(EventDropdown.Text)) {
-        if (CheckForLobby()) {
+        if (CheckForLobbySettings() && !CheckIfIngame()) {
             StartSelectedMode()
         } else {
             AddToLog("You need to be in the lobby to start " ModeDropdown.Text)
@@ -97,8 +96,7 @@ CustomMode() {
 }
 
 HandleEndScreen(isVictory := true) {
-    ; Challenge mode exits to the lobby. Do not continue into the normal
-    ; end-screen handlers after the lobby transition.
+    ; Challenge mode exits to the lobby. Do not continue into the normal end-screen handlers after the lobby transition.
     if (inChallengeMode) {
         ClickReturnToLobby()
         CheckLobby()
@@ -106,38 +104,26 @@ HandleEndScreen(isVictory := true) {
     }
 
     switch ModeDropdown.Text {
-        case "Story":
-            HandleStoryEnd()
         case "Portal":
             HandlePortalEnd()
         case "Custom":
             HandleCustomEnd()
         case "Contracts":
             HandleContractEnd()
+        case "Story":
+            HandleStoryEnd(isVictory)
         Default:
             HandleDefaultEnd(isVictory)
     }
 }
 
-HandleStoryEnd() {
-    global lastResult
-    if (NextLevelBox.Value && lastResult = "win") {
+HandleStoryEnd(isVictory) {
+    if (NextLevelBox.Value && isVictory) {
         AddToLog("[Game Over] Starting next level")
         ClickNextLevel()
         return RestartStage()
     }
-
-    ; Same rules as the other modes: matchmaking or Return To Lobby go back to the lobby
-    if ((MatchMaking.Value && HasMatchmaking("Story")) || ReturnLobbyBox.Value) {
-        AddToLog("[Game Over] Returning to lobby")
-        ClickReturnToLobby()
-        CheckLobby()
-        return StartSelectedMode()
-    }
-
-    AddToLog("[Game Over] Replaying stage")
-    ClickReplay()
-    return RestartStage()
+    return HandleDefaultEnd(isVictory)
 }
 
 HandleCustomEnd() {
@@ -158,11 +144,11 @@ HandleCustomEnd() {
 HandleDefaultEnd(isVictory) {
     mode := ModeDropdown.Text = "Event" ? EventDropdown.Text : ModeDropdown.Text
 
-    ; Infinity Castle advances to the next level instead of replaying
+    ; Infinity Castle: next room on win, replay on loss
     if (mode = "Infinity Castle") {
         if (isVictory) {
             AddToLog("[Game Over] Infinity Castle, advancing to next room")
-            ClickNextLevel()
+            ClickNextRoom()
         } else {
             AddToLog("[Game Over] Replaying stage")
             ClickReplay()
@@ -170,102 +156,146 @@ HandleDefaultEnd(isVictory) {
         return RestartStage()
     }
 
-    if (MatchMaking.Value && HasMatchmaking(mode)) {
-        AddToLog("[Game Over] Matchmaking enabled, returning to lobby to matchmake")
+    useMatchmaking := MatchMaking.Value && HasMatchmaking(mode)
+
+    if (useMatchmaking || ReturnLobbyBox.Value) {
+        AddToLog(useMatchmaking ? "[Game Over] Matchmaking enabled, returning to lobby..." : "[Game Over] Returning to lobby")
         ClickReturnToLobby()
         CheckLobby()
         return StartSelectedMode()
     }
 
-    if (!ReturnLobbyBox.Value) {
-        AddToLog("[Game Over] Replaying stage")
-        ClickReplay()
-        return RestartStage()
-    } else {
-        AddToLog("[Game Over] Returning to lobby")
-        ClickReturnToLobby()
-        CheckLobby()
-        return StartSelectedMode()
-    }
+    AddToLog("[Game Over] Replaying stage")
+    ClickReplay()
+    return RestartStage()
 }
 
 MonitorStage() {
     global Wins, loss, mode, stageStartTime
 
     ; -------------------------------------------------
-    ; 1. Setup: Timers, anti-AFK, timeouts
+    ; 1. Setup
     ; -------------------------------------------------
     lastClickTime := A_TickCount
-    FixClick(400, 500)  ; Initial anti-AFK
-    stageTimeout := A_TickCount + 3600000  ; 1 hour
+    FixClick(400, 500)
+    stageTimeout := A_TickCount + 3600000  ; 1 hour hard cap
 
     ; -------------------------------------------------
-    ; 2. Main monitoring loop
+    ; 2. Wait for the XP / results screen
     ; -------------------------------------------------
     while (true) {
         Sleep(200)
 
-        ; --- Anti-AFK (every 10s) ---
+        if (A_TickCount > stageTimeout && StoryActDropdown.Text != "Infinity" && ModeDropdown.Text != "Story") {
+            AddToLog("Didn't detect results over 1 hour, reconnecting...")
+            return Reconnect(true)
+        }
+
+        Reconnect()
+
+        if (HasCards(ModeDropdown.Text) || HasCards(EventDropdown.Text))
+            CheckForCardSelection()
+
+        if (CheckForXP() || EndButtonsVisible())
+            break
+
         if (A_TickCount - lastClickTime >= 10000) {
             FixClick(400, 500)
             lastClickTime := A_TickCount
         }
-
-        ; --- Quick progression checks ---
-        if (HasCards(ModeDropdown.Text) || HasCards(EventDropdown.Text)) {
-            CheckForCardSelection()
-        }
-
-        ; --- Fallbacks (early exit if needed) ---
-        Reconnect()
-
-        ; --- Wait for XP screen (break IMMEDIATELY) ---
-        if (CheckForXP()) {
-            break
-        }
     }
 
+    SetTimer(CheckAutoAbility, 0) ; The ability timer must not keep clicking once the match is over
     CloseUnitOverview()
     Sleep(300)
 
-    stageEndTime := A_TickCount
-    stageLength := FormatStageTime(stageEndTime - stageStartTime)
+    stageLength := FormatStageTime(A_TickCount - stageStartTime)
 
-    result := false
-
-    ; Fast parallel checks
-    victoryFound := (ok := FT(&X, &Y, 150, 180, 350, 260, 0, 0, VictoryText) or (ok := FT(&X, &Y, 319, 176, 492, 279, 0, 0, VictoryText2)) or (ok := FT(&X, &Y, 363, 193, 475, 274, 0, 0, VictoryTextApril)))
-    defeatFound := (ok := FT(&X, &Y, 150, 180, 350, 260, 0, 0, DefeatText) or (ok := FT(&X, &Y, 319, 176, 492, 279, 0, 0, DefeatText2)))
-
-    if (victoryFound) {
-        result := true
-    } else if (defeatFound) {
-        result := false
-    } else {
+    ; -------------------------------------------------
+    ; 3. Determine result
+    ; -------------------------------------------------
+    result := DetectResult(2500)
+    if (result = "Unknown") {
         AddToLog("⚠️ Warning: No clear win/loss detected - assuming defeat")
         result := false
-    }
-
-    outcome := result ? "Victory" : "Defeat"
-    AddToLog(outcome " - Stage Length: " stageLength)
-    if !WaitAndCheck(3000, NextText, 266, 376, 377, 413) {
-        ClickUntilGone(0, 0, 266, 376, 377, 413, NextText)
-        Sleep(1500)
     } else {
-        FixClick(321, 387)
+        result := (result = "Victory")
+    }
+    AddToLog((result ? "Victory" : "Defeat") " - Stage Length: " stageLength)
+
+    ; -------------------------------------------------
+    ; 4. Click through drops / Next until the end buttons appear
+    ; -------------------------------------------------
+    if (!AdvanceToEndScreen(30000)) {
+        AddToLog("⚠️ End screen not reached, attempting recovery")
+        return Reconnect(true)
     }
 
+    ; -------------------------------------------------
+    ; 5. Webhook / streak (now that we're safely on the end screen)
+    ; -------------------------------------------------
     if (WebhookEnabled.Value) {
         try {
             SendWebhookWithTime(result, stageLength)
         } catch as err {
             AddToLog("Webhook failed: " err.Message)
+            UpdateStreak(result)
         }
     } else {
         UpdateStreak(result)
     }
 
+    ; -------------------------------------------------
+    ; 6. Handle end behavior (replay / lobby / next room)
+    ; -------------------------------------------------
     HandleEndScreen(result)
+}
+
+DetectResult(timeoutMs := 2500) {
+    deadline := A_TickCount + timeoutMs
+    while (A_TickCount < deadline) {
+        if (FT(&X, &Y, 150, 180, 350, 260, 0, 0, VictoryText)
+        || FT(&X, &Y, 319, 176, 492, 279, 0, 0, VictoryText2)
+        || FT(&X, &Y, 363, 193, 475, 274, 0, 0, VictoryTextApril))
+            return "Victory"
+
+        if (FT(&X, &Y, 150, 180, 350, 260, 0, 0, DefeatText)
+        || FT(&X, &Y, 319, 176, 492, 279, 0, 0, DefeatText2))
+            return "Defeat"
+
+        Sleep(150)
+    }
+    
+    return GetPixel(0x00FF00, 160, 60, 2, 2, 5) ? "Victory" : "Unknown"
+}
+
+EndButtonsVisible() {
+    return FT(&X, &Y, 139, 99, 660, 144, 0.10, 0.10, Replay) 
+    || FT(&X, &Y, 139, 99, 660, 144, 0.10, 0.10, Retry)
+    || FT(&X, &Y, 139, 99, 660, 144, 0.10, 0.10, NextLevel)
+    || FT(&X, &Y, 139, 99, 660, 144, 0.10, 0.10, NextRoom)
+    || FT(&X, &Y, 139, 99, 660, 144, 0.10, 0.10, NextContract)
+    || FT(&X, &Y, 139, 99, 660, 144, 0.10, 0.10, ReturnToLobby)
+}
+
+AdvanceToEndScreen(timeoutMs := 30000) {
+    deadline := A_TickCount + timeoutMs
+
+    while (A_TickCount < deadline) {
+        if (EndButtonsVisible()) {
+            Sleep(300)                    ; let buttons become clickable
+            if (EndButtonsVisible())      ; confirm it's stable
+                return true
+        }
+
+        if (FT(&X, &Y, 266, 376, 377, 413, 0.10, 0.10, NextText))
+            FixClick(321, 387)            ; the rewards "Next" button
+        else
+            FixClick(400, 500)            ; skip item reveals
+
+        Sleep(300)
+    }
+    return false
 }
 
 ChallengeMovement() {
@@ -316,7 +346,7 @@ StartContent(mapName, actName, getMapFunc, getActFunc, mapScrollMousePos, actScr
 }
 
 PlayHere() {
-    FixClick(400, 435)  ; Play Here or Find Match
+    FixClick(400, 435)
     Sleep (500)
     FixClick(330, 325) ;Click Play here
     Sleep (1200)
@@ -1951,16 +1981,15 @@ RestartStage() {
 
     currentMap := ""
 
-    if (CheckNormalLoadingScreens
-        || ModeDropdown.Text = "Event"
-        || ModeDropdown.Text = "Infinity Castle") {
-
-        currentMap := (ModeDropdown.Text = "Event" && EventDropdown.Text = "Fool's Hunt")
-            ? DetectHuntMap()
-            : DetectMapImageSearch()
+    if (ModeDropdown.Text = "Portals") {
+        currentMap := PortalDropdown.Text
+    } else if (CheckNormalLoadingScreens.Value || ModeDropdown.Text = "Event" || ModeDropdown.Text = "Infinity Castle" || ModeDropdown.Text = "Contracts") {
+        currentMap := DetectMapImageSearch()
     } else {
         currentMap := DetectMap()
     }
+
+    CloseLeaderboard()
 
     ; Wait for loading
     CheckLoaded()
@@ -1981,8 +2010,7 @@ RestartStage() {
 }
 
 Reconnect(force := false) {
-    if (FindText(&X, &Y, 202, 206, 601, 256, 0.10, 0.10, Disconnect) || force || TeleportFailsafe.Value && TimerManager
-    .HasExpired("Teleport Failsafe")) {
+    if (FindText(&X, &Y, 202, 206, 601, 256, 0.10, 0.10, Disconnect) || force || TeleportFailsafe.Value && TimerManager.HasExpired("Teleport Failsafe")) {
         if (WinExist(rblxID)) {
             if (!WinActive(rblxID)) {
                 WinActivate(rblxID)
@@ -2025,7 +2053,8 @@ Reconnect(force := false) {
 
         AddToLog("Reconnecting to " GameName "...")
 
-        while (!isInLobby()) {
+        while (!CheckForLobbySettings() && !CheckIfIngame()) {
+            AddToLog("Reconnecting...")
             if (WinExist(rblxID)) {
                 WinActivate(rblxID)
                 sizeDown()
@@ -2037,7 +2066,7 @@ Reconnect(force := false) {
         }
         Sleep(1000)
         AddToLog("Reconnected Successfully!")
-        return true
+        return StartSelectedMode()
     }
 
     return false
@@ -2050,12 +2079,10 @@ wiggle() {
 }
 
 CheckLobby() {
-    ; This function only waits for the lobby. It must not start another mode
-    ; from inside the previous run's call stack, or repeated runs can overlap.
     loop {
         Sleep(1000)
 
-        if (CheckForLobby()) {
+        if (CheckForLobbySettings() && !CheckIfIngame()) {
             AddToLog("Returned to lobby")
             return true
         }
@@ -2064,8 +2091,10 @@ CheckLobby() {
     }
 }
 
+; In the lobby: the lobby settings button shows and none of the in-game signs do.
+; The old profile-button check also matched in-game screens and restarted the mode mid-match
 CheckForLobby() {
-    return FT(&X, &Y, 742, 239, 789, 502, 0.10, 0.10, ProfileText)
+    return CheckForLobbySettings() && !CheckIfIngame()
 }
 
 CheckLoaded() {
@@ -2244,6 +2273,18 @@ CheckForStartButton() {
     return FindText(&X, &Y, 319, 536, 396, 558, 0.10, 0.10, StartButton)
 }
 
+; Placement version of HandleStartButton: one quick look, no waiting. Clicks Yes if the vote is up
+; (that's when the stage really starts, so the stage timer starts then too)
+ClickVoteStartIfShown() {
+    if !(FT(&X, &Y, 352, 36, 450, 62, 0, 0, VoteStart) || FT(&X, &Y, 352, 36, 450, 62, 0, 0, VoteStartLaptop))
+        return false
+    FixClick(350, 103) ; click yes
+    FixClick(350, 100)
+    FixClick(350, 97)
+    global stageStartTime := A_TickCount
+    return true
+}
+
 HandleStartButton() {
     loop {
         Sleep(1000)
@@ -2284,7 +2325,7 @@ isMenuOpen(name := "") {
             [225, 217, 356, 246, 0.20, 0.20, "Results"]
         ],
         "Unit Placement", [
-            [23, 363, 12, 12, 25, "PixelCheck", 0x17D6FE] ; Same check as PlacementPanelOpen()
+            [20, 360, 30, 25, 15, "PixelCheck", 0x17D6FE] ; Same check as PlacementPanelOpen()
         ]
     )
 
@@ -2356,4 +2397,14 @@ SetRegion(winTitle := "ahk_exe RobloxPlayerBeta.exe") {
     ShowOCRRegions([region])
 
     return region
+}
+
+CheckIfIngame() {
+    return (
+        FT(&X, &Y, 301, 64, 503, 154, 0, 0, VoteStart)
+        || FT(&X, &Y, 301, 64, 503, 154, 0, 0, VoteStartLaptop)
+        || FT(&X, &Y, 0, 0, 742, 287, 832, 377, 0.10, 0.10, Units)
+        || FT(&X, &Y, 0, 0, 1080, 1080, 0, 0, UnitManager)
+        || PixelGetColor(320, 60) = 0x00EE00
+    )
 }

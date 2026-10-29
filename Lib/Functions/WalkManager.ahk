@@ -12,7 +12,7 @@ Walk(direction, duration) {
     key := "{" . direction . " up}"
     SendInput(key)
     KeyWait direction
-    Sleep(1000)  ; Optional pause after each movement
+    Sleep(1000)
 }
 
 GetMapForMode(mode) {

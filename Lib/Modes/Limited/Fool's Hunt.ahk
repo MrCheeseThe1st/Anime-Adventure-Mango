@@ -1,121 +1,5 @@
 #Requires AutoHotkey v2.0
 
-DetectHuntMap() {
-    AddToLog("Trying to determine map for Fool's Hunt...")
-    startTime := A_TickCount
-    passes := 0
-    loadedAt := 0
-
-    loop {
-        if (A_TickCount - startTime > 60000) {
-            if (CheckForLobby()) {
-                AddToLog("Found in lobby - restarting selected mode")
-                return StartSelectedMode()
-            }
-            AddToLog("Could not detect map after 5 minutes - proceeding without movement")
-            return "no map found"
-        }
-
-        ; Loaded in - but some maps only show their name after loading (the "Spirit Town" title appears
-        ; over the map once the Units button is up), so keep looking for 5 more seconds before giving up
-        if (!loadedAt && HasLoadedIn())
-            loadedAt := A_TickCount
-        if (loadedAt && A_TickCount - loadedAt > 5000) {
-            AddToLog("No map found")
-            if (passes > 0)
-                AddToLog("Saved what the loading screen looked like to Logs\MapDetect - send it to fix detection")
-            return "no map found"
-        }
-
-        static loadingScreens := Map(
-            ; Story Maps
-            "Planet Greenie", [PlanetGreenieLoadingScreen],
-            "Walled City", [WalledCityLoadingScreen],
-            "Snowy Town", [SnowyTownLoadingScreen],  ; Example of multiple images
-            "Sand Village", [SandVillageLoadingScreen],
-            "Navy Bay", [NavyBayLoadingScreen],
-            "Fiend City", [FiendCityLoadingScreen],
-            "Spirit World", [SpiritWorldLoadingScreen],
-            "Ant Kingdom", [AntKingdomLoadingScreen, AntKingdomLoadingScreen2, AntKingdomLoadingScreen3, AntKingdomRaidLoadingScreen],
-            "Magic Town", [MagicTownLoadingScreen],
-            "Magic Hills", [MagicHillsLoadingScreen],
-            "Haunted Academy", [HauntedAcademyLoadingScreen],
-            "Alien Spaceship", [AlienSpaceshipLoadingScreen],
-            "Space Center", [SpaceCenterLoadingScreen],
-            "Fabled Kingdom", [FabledKingdomLoadingScreen, FabledKingdomLoadingScreen2, FabledKingdomLoadingScreen3, FabledKingdomLoadingScreen4],
-            "Ruined City", [RuinedCityLoadingScreen],
-            "Puppet Island", [PuppetIslandLoadingScreen],
-            "Virtual Dungeon", [VirtualDungeonLoadingScreen],
-            "Snowy Kingdom", [SnowyKingdomLoadingScreen],
-            "Dungeon Throne", [DungeonThroneLoadingScreen],
-            "Mountain Temple", [MountainTempleLoadingScreen],
-            "Rain Village", [RainVillageLoadingScreen],
-            "Shibuya District", [ShibuyaDistrictLoadingScreen],
-            ; Legend Stages
-            "Spirit Town", [SpiritTownTitle, SpiritTownLoadingScreen],
-            ; Raids
-            "Sacred Planet", [SacredPlanetLoadingScreen],
-            "Strange Town", [StrangeTownLoadingScreen],
-            "Cursed Festival", [CursedFestivalLoadingScreen],
-            "Storm Hideout", [StormHideoutLoadingScreen],
-            "Nightmare Train", [NightmareTrainLoadingScreen],
-            "Future City", [FutureCityLoadingScreen],
-            ; Event Maps
-            "Assassin Park", [AssassinParkLoadingScreen],
-            "Haunted Mansion", [HauntedMansionLoadingScreen],
-            ; Unfinished Maps
-            "Air Craft", [AirCraftLoadingScreen],
-            "Hellish City", [HellishCityLoadingScreen]
-        )
-
-        CloseLeaderboard(false)
-
-        ; Check every map rather than stopping at the first match - a Map is walked alphabetically, so
-        ; "Air Craft" (an unfinished map whose water-tower image can show up on other loading screens)
-        ; was always checked first and won. If several match, prefer a finished map
-        static unfinished := Map("Air Craft", true, "Hellish City", true)
-        matches := []
-        for mapName, patterns in loadingScreens {
-            try {
-                for pattern in patterns {  ; Iterate through multiple images for each map
-                    if (ok := ImageSearch(&X, &Y, 0, 0, A_ScreenWidth, A_ScreenHeight, "*15 " pattern)) {
-                        matches.Push(mapName)
-                        break
-                    }
-                }
-            } catch {
-                if (debugMessages) {
-                    AddToLog("Error occurred during map detection.")
-                }
-            }
-        }
-        if (matches.Length > 0) {
-            chosen := matches[1]
-            for mapName in matches {
-                if !unfinished.Has(mapName) {
-                    chosen := mapName
-                    break
-                }
-            }
-            if (matches.Length > 1) {
-                list := ""
-                for mapName in matches
-                    list .= (list = "" ? "" : ", ") mapName
-                AddToLog("Loading screen matched several maps (" list ") - using " chosen)
-            }
-            AddToLog("Detected Map: " chosen)
-            return chosen
-        }
-
-        ; Nothing matched - keep a picture of each try so a missing/outdated map image can be remade
-        passes += 1
-        SaveMapDetectFrame(passes)
-
-        Sleep(loadedAt ? 300 : 1000)
-        Reconnect()
-    }
-}
-
 ClickAndHoldExit() {
 
     if WinExist(rblxID) {
@@ -157,26 +41,41 @@ GetMinimizeBtnPos(hwnd, &x, &y) {
     return true
 }
 
-FreezeClient(x := 692, y := 20, holdTime := 110000) {
+FreezeClient(x := 692, y := 20, holdTime := 110000, detectFn := "", &detected := "") {
     global rblxID
+    detected := ""
     hwnd := WinExist(rblxID)
     if !hwnd
         return false
     WinActivate(hwnd)
     if !WinWaitActive(hwnd, , 3)
         return false
-    if GetMinimizeBtnPos(hwnd, &nx, &ny) {
+    if GetMinimizeBtnPos(hwnd, &nx, &ny)
         x := nx, y := ny
-        ;AddToLog("Freeze: using computed minimize button position (" x "," y ")")
-    } else {
-      ;  AddToLog("Freeze: DWM lookup failed, using fallback position (" x "," y ")")
-    }
+
     CoordMode("Mouse", "Window")
     MouseMove(x, y)
     Sleep(150)
     SendEvent("{RButton down}")
-    Sleep(holdTime)
-    SendEvent("{RButton up}")
+
+    try {
+        start := A_TickCount
+        while (A_TickCount - start < holdTime) {
+            if (detectFn && detected = "") {
+                result := detectFn()
+                if (result != "") {
+                    detected := result
+                    AddToLog("Loading screen detected while frozen: " result)
+                    ; keep holding; remove this line if you'd rather release early
+                }
+            }
+            Sleep(100)
+        }
+    } finally {
+        MouseMove(0, 125, 2, "R")
+        SendEvent("{RButton up}")
+    }
+
     Sleep(50)
     CoordMode("Mouse", "Client")
     return true
@@ -188,7 +87,7 @@ StartFoolsHunt() {
     EventMovement()
 
     ; Start stage
-    while !(ok := FT(&X, &Y, 468 - 150000, 386 - 150000, 468 + 150000, 386 + 150000, 0, 0, JoinMatchmaking)) {
+    while !(ok := CheckForMatchmakingPrompt()) {
         Reconnect() ; Added Disconnect Check
         EventMovement()
     }
@@ -318,7 +217,7 @@ CheckForRefund() {
 CheckForAstralGate() {
     if (ok := FT(&X, &Y, 255, 561, 551, 605, 0.35, 0.35, AstralGate)) {
         AddToLog("Found astral gate, attempting to use...")
-        FTClick(X, Y)
+        FixClick(X, Y)
         Sleep(500)
         return true
     }
@@ -328,7 +227,7 @@ CheckForAstralGate() {
 CheckForAstralSummon() {
     if (ok := FT(&X, &Y, 255, 561, 551, 605, 0.30, 0.30, AstralSummon)) {
         AddToLog("Found astral summon, attempting to use...")
-        FTClick(X, Y)
+        FixClick(X, Y)
         Sleep(500)
         return true
     }

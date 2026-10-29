@@ -4,14 +4,14 @@ An AutoHotkey v2 macro for the Roblox game **Anime Adventures**.
 
 ## Credits
 
-This macro is built on **Ryn's Anime Adventures Macro** (free v0.2.7) by **Ryn (@TheRealTension)**:
+This macro is built on **Ryn's Anime Adventures Macro** (free v0.3.6) by **Ryn (@TheRealTension)**:
 https://github.com/itsRynsRoblox/Anime-Adventures-Redux
 
 Ryn wrote the original macro and gave permission to share this modified version. All credit for the
 original goes to Ryn. Skinnypigthe2nd's changes are listed below.
 
-Bundled libraries keep their own authors and licenses: FindText, AHKv2-Gdip, jsongo, OCR, RapidOcr,
-ImagePut and Discord-Webhook (see the `Lib` folder).
+Bundled libraries keep their own authors and licenses: FindText, AHKv2-Gdip, jsongo, OCR
+and Discord-Webhook (see the `Lib` folder).
 
 ## What's new compared to Ryn's macro
 
@@ -30,6 +30,26 @@ ImagePut and Discord-Webhook (see the `Lib` folder).
   `Logs\MapDetect` so the problem can be fixed.
 - `;` pauses the macro (as well as the normal pause key).
 - **Webhook fixes:** every run is sent, with a text-only fallback.
+
+## v1.1.0
+
+- **Merged Ryn's free v0.3.6:** Infinity Castle matchmaking, rewritten end-game screen handling (drop
+  clicks, 10% tolerance on end buttons, force reconnect if stuck), updated captcha region and OCR library,
+  universal lobby check, map-detection tie-break, Contracts map detection, smoother window dragging,
+  window resize without admin, webhook stats fields. RapidOCR removed (it was unused).
+- **Captcha fix:** matchmaking now waits for the matchmaking prompt (walks back and forth to find it in
+  Event/Infinity Castle) before reading the captcha, using the new captcha region. The 1-minute
+  private-server rejoin still applies.
+- **Captcha fix:** the auto-ability timer stops when a match ends, so it can't click around in the
+  lobby while the captcha is being typed.
+- **No more mid-match "Found in lobby" restarts:** the lobby check no longer matches in-game screens.
+- **Faster placement:** a placement is confirmed by the unit's upgrade panel popping up (keep the
+  game's auto-open upgrade UI on), and the panel is closed right away. The Unit Overview isn't used for
+  placing anymore.
+- **New Path pattern:** finds the path by toggling P (effects and units are ignored) and reads which way
+  the chevrons point. Attackers go in a line right outside the path's edge lines and Farm units
+  (Unit Type = Farm) in a second line just outside them, both filling from the start of the path. The
+  path is remembered per map, so later matches on the same map start placing right away.
 
 ## Install
 

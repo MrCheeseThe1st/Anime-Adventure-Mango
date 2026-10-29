@@ -22,11 +22,14 @@ StartInfinityCastle() {
         FixClick(485, 375)  ; Click Hard Mode
     }
 
-    ;Start Inf Castle
-    if (ok := FT(&X, &Y, 344, 506, 458, 540, 0, 0, ModeCancel)) {
-        ClickUntilGone(0, 0, 344, 506, 458, 540, ModeCancel, -10, -80)
+    ; Handle play mode selection
+    if (MatchMaking.Value) {
+        FindMatch()
+    } else {
+        PlayHere()
     }
 
+    WaitUntilNotInLobby()
     RestartStage()
 }
 

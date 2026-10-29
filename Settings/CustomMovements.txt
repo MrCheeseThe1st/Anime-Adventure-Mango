@@ -1,6 +1,10 @@
 ﻿Mountain Temple,s,1125,0
 Mountain Temple,s,672,437
 Mountain Temple,s,125,188
+Snowy Kingdom,d,719,0,938
+Snowy Kingdom,w,766,-735,922
+Snowy Kingdom,w,6172,437,2125
+Snowy Kingdom,d,4562,-4531,3766
 Spirit Town,s,2469,0,938
 Spirit Town,a,3969,296,3703
 Spirit Town,s,1546,110,7782

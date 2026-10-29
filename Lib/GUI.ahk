@@ -8,7 +8,7 @@
 global GameName := "Anime Adventures"
 global GameTitle := "Skinnypigthe2nd's Anime Adventure Mango "
 global ShortTitle := "Mango" ; Used in window titles
-global version := "v1.0.0"
+global version := "v1.1.0"
 global rblxID := "ahk_exe RobloxPlayerBeta.exe"
 ; Update Checker
 global repoOwner := "MrCheeseThe1st"
@@ -261,14 +261,12 @@ OpenGuide(*) {
 
     ; ── Step 1: Windows Display Settings ────────────────
     GuideGUI.SetFont("s12 bold", "Segoe UI")
-    GuideGUI.Add("Text", "x24 y" y " w700 c" gHi,
-        "01  |  Configure Windows Display Settings")
+    GuideGUI.Add("Text", "x24 y" y " w700 c" gHi, "01  |  Configure Windows Display Settings")
 
     y += 32
 
     GuideGUI.SetFont("s10", "Segoe UI")
-    GuideGUI.Add("Text", "x44 y" y " w660 c" gSub,
-        "Open Windows Settings > System > Display and configure the following:")
+    GuideGUI.Add("Text", "x44 y" y " w660 c" gSub, "Open Windows Settings > System > Display and configure the following:")
 
     y += 30
 
@@ -276,8 +274,7 @@ OpenGuide(*) {
     GuideGUI.Add("Text", "x62 y" y " w20 c" gHi " BackgroundTrans", "•")
 
     GuideGUI.SetFont("s10", "Segoe UI")
-    GuideGUI.Add("Text", "x84 y" y " w590 c" gBody " BackgroundTrans",
-        "Display resolution: 1920 × 1080 (Recommended)")
+    GuideGUI.Add("Text", "x84 y" y " w590 c" gBody " BackgroundTrans", "Display resolution: 1920 × 1080 (Recommended)")
 
     y += 30
 
@@ -285,8 +282,7 @@ OpenGuide(*) {
     GuideGUI.Add("Text", "x62 y" y " w20 c" gHi " BackgroundTrans", "•")
 
     GuideGUI.SetFont("s10", "Segoe UI")
-    GuideGUI.Add("Text", "x84 y" y " w590 c" gBody " BackgroundTrans",
-        "Scale: 100%")
+    GuideGUI.Add("Text", "x84 y" y " w590 c" gBody " BackgroundTrans", "Scale: 100%")
 
     y += 30
 
@@ -294,8 +290,7 @@ OpenGuide(*) {
     GuideGUI.Add("Text", "x62 y" y " w20 c" gHi " BackgroundTrans", "•")
 
     GuideGUI.SetFont("s10", "Segoe UI")
-    GuideGUI.Add("Text", "x84 y" y " w590 c" gBody " BackgroundTrans",
-        "HDR: Disabled")
+    GuideGUI.Add("Text", "x84 y" y " w590 c" gBody " BackgroundTrans", "HDR: Disabled")
 
     y += 38
 
@@ -304,14 +299,12 @@ OpenGuide(*) {
 
     ; ── Step 2: Roblox Settings ─────────────────────────
     GuideGUI.SetFont("s12 bold", "Segoe UI")
-    GuideGUI.Add("Text", "x24 y" y " w700 c" gHi,
-        "02  |  Configure Roblox Settings")
+    GuideGUI.Add("Text", "x24 y" y " w700 c" gHi, "02  |  Configure Roblox Settings")
 
     y += 32
 
     GuideGUI.SetFont("s10", "Segoe UI")
-    GuideGUI.Add("Text", "x44 y" y " w660 c" gSub,
-        "Open the Roblox in-game settings menu and configure the following:")
+    GuideGUI.Add("Text", "x44 y" y " w660 c" gSub, "Open the Roblox in-game settings menu and configure the following:")
 
     y += 30
 
@@ -319,8 +312,7 @@ OpenGuide(*) {
     GuideGUI.Add("Text", "x62 y" y " w20 c" gHi " BackgroundTrans", "•")
 
     GuideGUI.SetFont("s10", "Segoe UI")
-    GuideGUI.Add("Text", "x84 y" y " w590 c" gBody " BackgroundTrans",
-        "Camera Mode: Default (Classic)")
+    GuideGUI.Add("Text", "x84 y" y " w590 c" gBody " BackgroundTrans", "Language: English (United States)")
 
     y += 30
 
@@ -328,8 +320,7 @@ OpenGuide(*) {
     GuideGUI.Add("Text", "x62 y" y " w20 c" gHi " BackgroundTrans", "•")
 
     GuideGUI.SetFont("s10", "Segoe UI")
-    GuideGUI.Add("Text", "x84 y" y " w590 c" gBody " BackgroundTrans",
-        "Graphics Mode: Manual")
+    GuideGUI.Add("Text", "x84 y" y " w590 c" gBody " BackgroundTrans", "Performance Stats: Off")
 
     y += 30
 
@@ -337,8 +328,7 @@ OpenGuide(*) {
     GuideGUI.Add("Text", "x62 y" y " w20 c" gHi " BackgroundTrans", "•")
 
     GuideGUI.SetFont("s10", "Segoe UI")
-    GuideGUI.Add("Text", "x84 y" y " w590 c" gBody " BackgroundTrans",
-        "Graphics Quality: Lowest")
+    GuideGUI.Add("Text", "x84 y" y " w590 c" gBody " BackgroundTrans", "Micro Profiler: Off")
 
     y += 30
 
@@ -346,8 +336,40 @@ OpenGuide(*) {
     GuideGUI.Add("Text", "x62 y" y " w20 c" gHi " BackgroundTrans", "•")
 
     GuideGUI.SetFont("s10", "Segoe UI")
-    GuideGUI.Add("Text", "x84 y" y " w590 c" gBody " BackgroundTrans",
-        "Fullscreen: Disabled")
+    GuideGUI.Add("Text", "x84 y" y " w590 c" gBody " BackgroundTrans", "Camera Mode: Default (Classic)")
+
+    y += 30
+
+    GuideGUI.SetFont("s10 bold", "Segoe UI")
+    GuideGUI.Add("Text", "x62 y" y " w20 c" gHi " BackgroundTrans", "•")
+
+    GuideGUI.SetFont("s10", "Segoe UI")
+    GuideGUI.Add("Text", "x84 y" y " w590 c" gBody " BackgroundTrans", "Graphics Mode: Manual")
+
+    y += 30
+
+    GuideGUI.SetFont("s10 bold", "Segoe UI")
+    GuideGUI.Add("Text", "x62 y" y " w20 c" gHi " BackgroundTrans", "•")
+
+    GuideGUI.SetFont("s10", "Segoe UI")
+    GuideGUI.Add("Text", "x84 y" y " w590 c" gBody " BackgroundTrans", "Graphics Quality: Lowest")
+
+    y += 30
+
+    GuideGUI.SetFont("s10 bold", "Segoe UI")
+    GuideGUI.Add("Text", "x62 y" y " w20 c" gHi " BackgroundTrans", "•")
+
+    GuideGUI.SetFont("s10", "Segoe UI")
+    GuideGUI.Add("Text", "x84 y" y " w590 c" gBody " BackgroundTrans", "Fullscreen: Disabled")
+
+
+    y += 30
+    
+    GuideGUI.SetFont("s10 bold", "Segoe UI")
+    GuideGUI.Add("Text", "x62 y" y " w20 c" gHi " BackgroundTrans", "•")
+
+    GuideGUI.SetFont("s10", "Segoe UI")
+    GuideGUI.Add("Text", "x84 y" y " w590 c" gBody " BackgroundTrans", "Roblox Font: Default")
 
 
     y += 30
@@ -366,14 +388,12 @@ OpenGuide(*) {
 
     ; ── Step 3: Anime Adventures Settings ───────────────
     GuideGUI.SetFont("s12 bold", "Segoe UI")
-    GuideGUI.Add("Text", "x24 y" y " w700 c" gHi,
-        "03  |  Configure Anime Adventures Settings")
+    GuideGUI.Add("Text", "x24 y" y " w700 c" gHi, "03  |  Configure Anime Adventures Settings")
 
     y += 32
 
     GuideGUI.SetFont("s10", "Segoe UI")
-    GuideGUI.Add("Text", "x44 y" y " w660 c" gSub,
-        "Open Anime Adventures settings and make sure these two settings are configured correctly.")
+    GuideGUI.Add("Text", "x44 y" y " w660 c" gSub, "Open Anime Adventures settings and make sure these two settings are configured correctly.")
 
     y += 30
 
@@ -381,8 +401,7 @@ OpenGuide(*) {
     GuideGUI.Add("Text", "x62 y" y " w20 c" gHi " BackgroundTrans", "•")
 
     GuideGUI.SetFont("s10", "Segoe UI")
-    GuideGUI.Add("Text", "x84 y" y " w590 c" gBody " BackgroundTrans",
-        "Disable Auto-Open Upgrade UI")
+    GuideGUI.Add("Text", "x84 y" y " w590 c" gBody " BackgroundTrans", "Auto-Skip Waves: Enabled")
 
     y += 30
 
@@ -390,8 +409,15 @@ OpenGuide(*) {
     GuideGUI.Add("Text", "x62 y" y " w20 c" gHi " BackgroundTrans", "•")
 
     GuideGUI.SetFont("s10", "Segoe UI")
-    GuideGUI.Add("Text", "x84 y" y " w590 c" gBody " BackgroundTrans",
-        "Show Upgrade UI on Left")
+    GuideGUI.Add("Text", "x84 y" y " w590 c" gBody " BackgroundTrans", "Disable Auto-Open Upgrade UI: Disabled")
+
+    y += 30
+
+    GuideGUI.SetFont("s10 bold", "Segoe UI")
+    GuideGUI.Add("Text", "x62 y" y " w20 c" gHi " BackgroundTrans", "•")
+
+    GuideGUI.SetFont("s10", "Segoe UI")
+    GuideGUI.Add("Text", "x84 y" y " w590 c" gBody " BackgroundTrans", "Show Upgrade UI on Left: Enabled")
 
     y += 38
 
@@ -486,11 +512,15 @@ OpenDebugMenu(*) {
         "Check story map coordinates",
         "Check legend stage map coordinates",
         "Check raid map coordinates",
+        "Check captcha numbers",
+        "Check for upgrade limit text",
+        "Show lobby detection region",
         "Test screen resolution / DPI",
         "Find placement spots around the path",
         "Check the placement bubble",
         "Check the Unit Overview",
         "Check Unit Overview scrolling",
+        "Count the units in the Unit Overview",
     ]
     Descriptions := Map(
         "Check for the lobby", "Looks for the lobby screen to confirm you're not in a match.",
@@ -502,11 +532,15 @@ OpenDebugMenu(*) {
         "Check story map coordinates", "Ensure that the story maps interface is open and scrolled to the top.",
         "Check legend stage map coordinates", "Ensure that the legend stage maps interface is open and scrolled to the top.",
         "Check raid map coordinates", "Ensure that the raid maps interface is open and scrolled to the top.",
+        "Check captcha numbers", "Ensure that the captcha numbers are correct.",
+        "Check for upgrade limit text", "Check all upgrade limit text currently displayed.",
+        "Show lobby detection region", "Shows a red box around the lobby detection region.",
         "Test screen resolution / DPI", "Reports your resolution and DPI scaling for troubleshooting.",
         "Check the placement bubble", "Hold a unit and rest the mouse on a spot. The mouse jumps away and back to compare - reports whether the bubble reads as red (can't place).",
-        "Find placement spots around the path", "In a match: clicks P to compare the path shown and hidden, finds spots around it and shows them as dots.",
+        "Find placement spots around the path", "In a match: clicks P 4 times to find the path, then shows the spots - cyan/white by the path, orange for Farm units.",
         "Check the Unit Overview", "Opens the Unit Overview (F) and reports each card's level, Max state and Upg button position.",
         "Check Unit Overview scrolling", "Needs more units than fit on screen. Calibrates scrolling, then scrolls to every card.",
+        "Count the units in the Unit Overview", "In a match: counts the placed units the way the macro does when its own count is off (scrolls up from the bottom).",
     )
 
     DebugGUI.SetFont("s9 w700 c" C.muted, "Segoe UI")
@@ -654,6 +688,14 @@ RunDebugTest(selected, customCode, ResultEdit) {
                     ResultEdit.Value .= TestOverviewScrolling(Integer(answer.Value))
                 }
 
+            case "Count the units in the Unit Overview":
+                WinActivate(rblxID)
+                Sleep(500)
+                ResultEdit.Value .= "Counting (don't touch the mouse)...`n"
+                n := CountOverviewUnits()
+                CloseUnitOverview()
+                ResultEdit.Value .= (n < 0 ? "Couldn't count the units" : "Counted " n " unit" (n = 1 ? "" : "s"))
+
             case "Check the placement bubble":
                 ResultEdit.Value .= "Hold a unit and rest the mouse on a spot - checking in 3 seconds...`n"
                 Sleep(3000)
@@ -667,6 +709,16 @@ RunDebugTest(selected, customCode, ResultEdit) {
             case "Find placement spots around the path":
                 ResultEdit.Value .= "Scanning for the path...`n"
                 ResultEdit.Value .= TestPathSpots()
+            case "Check captcha numbers":
+                ResultEdit.Value .= "Testing all captcha numbers...`n"
+                CaptchaDetect(235, 262, 569, 309, 400, 335, true, false, ResultEdit)
+
+            case "Check for upgrade limit text":
+                TestUpgradeLimitTexts(ResultEdit)
+
+            case "Show lobby detection region":
+                ResultEdit.Value .= "Showing lobby detection region...`n"
+                ShowRegionByCoords(11, 557, 45, 591, 5000, rblxID)
 
             case "Test screen resolution / DPI":
                 ResultEdit.Value .= "Screen: " A_ScreenWidth "x" A_ScreenHeight ""
@@ -742,8 +794,7 @@ global PlacementPatternDropdown := MainUI.Add("DropDownList", "x825 y410 w100 h1
     "Custom", "Grid", "3x3 Grid", "Spiral", "Up and Down", "Random", "Path"])
 
 PlaceSpeedText := MainUI.Add("Text", "x1030 y390 w115 h20", "Placement Speed")
-global PlaceSpeed := MainUI.Add("DropDownList", "x1035 y410 w100 h180 Choose3 +Center", ["Super Fast (1s)",
-    "Fast (1.5s)", "Default (2s)", "Slow (2.5s)", "Very Slow (3s)", "Toaster (4s)"])
+global PlaceSpeed := MainUI.Add("DropDownList", "x1035 y410 w100 h180 Choose3 +Center", ["Super Fast (1s)", "Fast (1.5s)", "Default (2s)", "Slow (2.5s)", "Very Slow (3s)", "Toaster (4s)"])
 
 PlacementSelectionText := MainUI.Add("Text", "x1235 y390 w125 h20", "Placement Order")
 global PlacementSelection := MainUI.Add("DropDownList", "x1240 y410 w100 h180 Choose1 +Center", ["Default",
@@ -774,6 +825,7 @@ global WebhookEnabled := MainUI.Add("CheckBox", "x825 y110 Hidden cffffff", "Web
 WebhookEnabled.OnEvent("Click", (*) => ValidateWebhook())
 global WebhookLogsEnabled := MainUI.Add("CheckBox", "x825 y130 Hidden cffffff", "Send Console Logs")
 global WebhookURLBox := MainUI.Add("Edit", "x1000 y108 w260 h20 Hidden c" uiTheme[6], "")
+WebhookURLBox.OnEvent("Change", UpdateWebhookURL)
 
 global PrivateSettingsBorder := MainUI.Add("GroupBox", "x808 y145 w550 h236 +Center Hidden c" uiTheme[1], "Reconnection Settings")
 global PrivateServerEnabled := MainUI.Add("CheckBox", "x825 y165 Hidden cffffff", "Reconnect to Private Server")
@@ -1096,12 +1148,21 @@ upgradeLimitEnabled6 := MainUI.Add("CheckBox", "x1235 y355 w15 h15 " (unitUpgrad
 MainUI.SetFont("s8 c" uiTheme[6])
 
 ; Placement dropdowns
-Placement1 := MainUI.Add("DropDownList", "x918 y105 w35 h180 Choose1 +Center", ["1", "2", "3", "4", "5", "6"])
-Placement2 := MainUI.Add("DropDownList", "x918 y155 w35 h180 Choose1 +Center", ["1", "2", "3", "4", "5", "6"])
-Placement3 := MainUI.Add("DropDownList", "x918 y205 w35 h180 Choose1 +Center", ["1", "2", "3", "4", "5", "6"])
-Placement4 := MainUI.Add("DropDownList", "x918 y255 w35 h180 Choose1 +Center", ["1", "2", "3", "4", "5", "6"])
-Placement5 := MainUI.Add("DropDownList", "x918 y305 w35 h180 Choose1 +Center", ["1", "2", "3", "4", "5", "6"])
-Placement6 := MainUI.Add("DropDownList", "x918 y355 w35 h180 Choose1 +Center", ["1", "2", "3", "4", "5", "6"])
+placementOptions := ["1", "2", "3", "4", "5", "6"]
+
+if (IncreaseUnitPlacements) {
+    loop 14
+        placementOptions.Push(String(A_Index + 6))
+}
+
+placementRows := IncreaseUnitPlacements ? 20 : 6
+
+Placement1 := MainUI.Add("DropDownList", "x918 y105 w35 r" placementRows " Choose1 +Center", placementOptions)
+Placement2 := MainUI.Add("DropDownList", "x918 y155 w35 r" placementRows " Choose1 +Center", placementOptions)
+Placement3 := MainUI.Add("DropDownList", "x918 y205 w35 r" placementRows " Choose1 +Center", placementOptions)
+Placement4 := MainUI.Add("DropDownList", "x918 y255 w35 r" placementRows " Choose1 +Center", placementOptions)
+Placement5 := MainUI.Add("DropDownList", "x918 y305 w35 r" placementRows " Choose1 +Center", placementOptions)
+Placement6 := MainUI.Add("DropDownList", "x918 y355 w35 r" placementRows " Choose1 +Center", placementOptions)
 
 Priority1 := MainUI.Add("DropDownList", "x980 y105 w35 h180 Choose1 +Center", ["1", "2", "3", "4", "5", "6"])
 Priority1.OnEvent("Change", (*) => OnPriorityChange("Placement", 1, Priority1.Value))
@@ -1225,29 +1286,34 @@ getElapsedTime() {
 
 ;Basically the code to move roblox, below
 
-moveRobloxWindow() {
+moveRobloxWindow(dragging := false) {
     global MainUIHwnd, offsetX, offsetY, rblxID
 
     hwnd := WinExist(rblxID)
     if !hwnd {
-        AddToLog("Waiting for Roblox window...")
+        if !dragging
+            AddToLog("Waiting for Roblox window...")
         return
     }
 
-    ; First ensure correct size
-    ok := sizeDown()
+    if !dragging {
+        if !ForceRobloxClientSize() && IsFullscreenWin(hwnd)
+            return
+    }
 
-    ; Never try to drag a window that is still in real fullscreen
-    if (!ok && IsFullscreenWin(hwnd))
-        return
+    WinGetPos(&x, &y, , , "ahk_id " MainUIHwnd)
 
-    ; Then move relative to main UI
-    WinGetPos(&x, &y, &w, &h, MainUIHwnd)
-    WinMove(x + offsetX, y + offsetY, , , "ahk_id " hwnd)
-
-    ; Only grab focus if we don't already have it
-    if !WinActive("ahk_id " hwnd)
-        WinActivate("ahk_id " hwnd)
+    if dragging {
+        ; Non-activating, non-sizing, async move
+        DllCall("SetWindowPos", "ptr", hwnd, "ptr", 0
+            , "int", x + offsetX, "int", y + offsetY
+            , "int", 0, "int", 0
+            , "uint", 0x4015)   ; NOSIZE | NOZORDER | NOACTIVATE | ASYNCWINDOWPOS
+    } else {
+        WinMove(x + offsetX, y + offsetY, , , "ahk_id " hwnd)
+        if !WinActive("ahk_id " hwnd)
+            WinActivate("ahk_id " hwnd)
+    }
 }
 
 sizeDown() {
@@ -1266,8 +1332,7 @@ sizeDown() {
         Sleep(200)
     }
 
-    ; Never ask for a window bigger than the monitor's work area (small/scaled screens),
-    ; otherwise the size can never match and we'd fail/retry forever
+    ; Never ask for a window bigger than the monitor's work area (small/scaled screens)
     GetMonitorWorkArea(hwnd, &L, &T, &R, &B)
     tw := Min(targetWidth, R - L)
     th := Min(targetHeight, B - T)
@@ -1333,6 +1398,44 @@ IsFullscreenWin(hwnd) {
     return false
 }
 
+; Forces the Roblox *client* area to exactly 800×600
+ForceRobloxClientSize(hwnd := 0) {
+    if !hwnd
+        hwnd := WinExist(rblxID)
+    if !hwnd
+        return false
+
+    id := "ahk_id " hwnd
+
+    ; Restore first
+    if (WinGetMinMax(id) != 0) {
+        WinRestore(id)
+        Sleep(100)
+    }
+
+    loop 8 {
+        ; Measure current outer vs client
+        WinGetPos(&ox, &oy, &ow, &oh, id)
+        WinGetClientPos(&cx, &cy, &cw, &ch, id)
+
+        if (cw = 800 && ch = 600)
+            return true
+
+        ; Calculate required outer size
+        newW := ow + (800 - cw)
+        newH := oh + (600 - ch)
+
+        ; Keep position, change size
+        DllCall("SetWindowPos", "ptr", hwnd, "ptr", 0
+            , "int", ox, "int", oy
+            , "int", newW, "int", newH
+            , "uint", 0x0016)   ; SWP_NOZORDER | SWP_NOACTIVATE
+
+        Sleep(80)
+    }
+    return false
+}
+
 ; Compares against the (possibly clamped) target, with a small tolerance
 SizeMatches(w, h, tw := unset, th := unset) {
     global targetWidth, targetHeight
@@ -1377,7 +1480,8 @@ forceRobloxSize() {
     }
 
     WinActivate(rblxID)
-    sizeDown()
+    ;sizeDown()
+    ForceRobloxClientSize()
     moveRobloxWindow()
 }
 
@@ -1387,7 +1491,8 @@ checkRobloxSize() {
     if WinExist(rblxID) {
         WinGetPos(&X, &Y, &OutWidth, &OutHeight, rblxID)
         if (OutWidth != targetWidth || OutHeight != targetHeight) {
-            sizeDown()
+            ;sizeDown()
+            ForceRobloxClientSize()
             moveRobloxWindow()
         }
     }
@@ -1709,4 +1814,45 @@ SetClickThrough(enable := true) {
         exStyle &= ~WS_EX_TRANSPARENT
 
     WinSetExStyle(exStyle, "ahk_id " hwnd)
+}
+
+; Put the GUI in the middle of the main screen, then Roblox follows it
+CenterMacroWindow() {
+    global MainUI
+    MonitorGetWorkArea(MonitorGetPrimary(), &left, &top, &right, &bottom)
+    WinGetPos(, , &w, &h, "ahk_id " MainUI.hWnd)
+    x := Max(left, left + (right - left - w) // 2)
+    y := Max(top, top + (bottom - top - h) // 2)
+    WinMove(x, y, , , "ahk_id " MainUI.hWnd)
+}
+
+SetupDraggableGui() {
+    OnMessage(0x0201, MacroGui_OnLButtonDown)   ; WM_LBUTTONDOWN
+    OnMessage(0x0003, MacroGui_OnMove)          ; WM_MOVE (continuous while dragging)
+    OnMessage(0x0232, MacroGui_OnMoveEnd)       ; WM_EXITSIZEMOVE (final full sync)
+}
+
+MacroGui_OnLButtonDown(wParam, lParam, msg, hwnd) {
+    global MainUI
+    if (hwnd = MainUI.hWnd) {
+        DllCall("ReleaseCapture")
+        SendMessage(0xA1, 2, 0, , "ahk_id " MainUI.hWnd)   ; WM_NCLBUTTONDOWN, HTCAPTION
+        return 0
+    }
+}
+
+MacroGui_OnMove(wParam, lParam, msg, hwnd) {
+    global MainUI
+    static busy := false
+    if (hwnd != MainUI.hWnd || busy)
+        return
+    busy := true
+    try moveRobloxWindow(true)
+    busy := false
+}
+
+MacroGui_OnMoveEnd(wParam, lParam, msg, hwnd) {
+    global MainUI
+    if (hwnd = MainUI.hWnd)
+        moveRobloxWindow()   ; full version: resize check, exact position, focus
 }

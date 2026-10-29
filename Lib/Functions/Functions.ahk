@@ -534,7 +534,7 @@ OnPriorityChange(type, priorityNumber, newPriorityNumber) {
 
 CheckForCardSelection() {
     if (ok := FT(&cardX, &cardY, 270, 127, 532, 161, 0, 0, pick_card)) {
-        HandleCards()
+        SelectCardsByMode()
         return true
     }
     return false
@@ -595,7 +595,7 @@ CheckUnitAbilities() {
         }
 
         if (CheckForCardSelection()) {
-            HandleCards()
+            SelectCardsByMode()
         }
 
         FixClick(coord.x, coord.y)
@@ -627,10 +627,6 @@ GetPrivateServerCode(link) {
     return ""
 }
 
-isInLobby() {
-    return CheckForLobby()
-}
-
 UpdateActiveConfiguration(*) {
     ToggleControlGroup(ConfigurationDropdown.Text)
 }
@@ -640,7 +636,7 @@ CloseLeaderboard(clickFailsafe := true) {
         SendInput("{Tab}")
     } else {
         if (clickFailsafe) {
-            FixClick(487, 71)
+            FixClick(564, 72)
             FixClick(641, 72)
         }
     }
@@ -747,95 +743,163 @@ WinBoundPixel(&outX, &outY, X1, Y1, X2, Y2, color, variation := 10) {
     return searchRegion.Pixel(&outX, &outY, color, variation)
 }
 
-CaptchaDetect(x, y, w, h, inputX, inputY) {
-    detectionCount := 0
-    AddToLog("Checking for numbers...")
+ShowRegion(x, y, w, h, ms := 2000) {
+    g := Gui("+AlwaysOnTop -Caption +ToolWindow +E0x20")
+    g.BackColor := "Red"
+    g.Show("x" x " y" y " w" w " h" h " NoActivate")
+    WinSetTransparent(110, g)
+    SetTimer(() => g.Destroy(), -ms)
+}
+
+ShowRegionByCoords(x1, y1, x2, y2, ms := 2000, winTitle := "") {
+    if (winTitle != "") {
+        WinGetClientPos(&cx, &cy, , , winTitle)
+        x1 += cx, x2 += cx
+        y1 += cy, y2 += cy
+    }
+    ShowRegion(x1, y1, x2 - x1, y2 - y1, ms)
+}
+
+
+CaptchaDetect(x1, y1, x2, y2, inputX, inputY, clientRel := true, sendInput := true, resultEdit := false) {
+    ; Send messages to ResultEdit when requested
+    LogResult(message) {
+        if resultEdit
+            ResultEdit.Value .= message "`n"
+        else
+            AddToLog(message)
+    }
+
+    LogResult("Checking for numbers...")
+    lastError := "", lastRead := ""
+
     loop 10 {
         try {
-            FT_GetOffset(&ocrDX, &ocrDY) ; [Window follow] OCR area follows Roblox
-            result := OCR.FromRect(x + ocrDX, y + ocrDY, w, h, "FirstFromAvailableLanguages", {
-                grayscale: true,
-                scale: 2.0
-            })
+            number := ReadCaptchaNumber(x1, y1, x2, y2, clientRel, &text)
+            if (text != "")
+                LogResult("Captcha text: [" text "]")
 
-            if result {
-                ; Get text before any linebreak
-                number := StrSplit(result.Text, "`n")[1]
+            ; Only trust a number read the same way twice in a row - a single misread digit fails the captcha
+            if (number != "" && number = lastRead) {
+                LogResult("Detected captcha: " number)
 
-                ; Clean to just get numbers
-                number := RegExReplace(number, "[^\d]")
+                if !sendInput
+                    return true
 
-                if (StrLen(number) >= 5 && StrLen(number) <= 7) {
-                    detectionCount++
-
-                    if (detectionCount >= 1) {
-                        ; Send exactly what we detected in the green text
-                        FixClick(inputX, inputY)
-                        Sleep(300)
-
-                        AddToLog("Sending number: " number)
-                        for digit in StrSplit(number) {
-                            Send(digit)
-                            Sleep(120)
-                        }
-                        Sleep(200)
-                        return true
-                    }
+                Loop 2 {
+                    FixClick(inputX, inputY)
+                    Sleep(300)
                 }
+                Send("^a{Backspace}") ; Clear anything left in the box from an earlier try
+
+                for digit in StrSplit(number) {
+                    Send(digit)
+                    Sleep(120)
+                }
+
+                Sleep(200)
+                ; Typed, not accepted - SolveCaptcha checks whether the game took it
+                LogResult("Typed captcha: " number)
+                return number
+            }
+            lastRead := number
+        } catch as e {
+            if (e.Message != lastError) {
+                LogResult("OCR error: " e.Message)
+                lastError := e.Message
             }
         }
+
         Sleep(200)
     }
-    AddToLog("Could not detect valid captcha")
+
+    LogResult("Could not detect valid captcha after 10 attempts.")
     return false
 }
 
-DetectMapImageSearch() { ;Imagesearch version
+; OCRs the captcha area and returns the 5-7 digit number on its first line, or "" if there isn't one.
+; `text` gets the raw OCR text
+ReadCaptchaNumber(x1, y1, x2, y2, clientRel := true, &text := "") {
+    x := Min(x1, x2), y := Min(y1, y2)
+    w := Abs(x2 - x1), h := Abs(y2 - y1)
+    if clientRel {
+        WinGetClientPos(&rX, &rY, , , rblxID)
+        x += rX, y += rY
+    }
+    result := OCR.FromRect(x, y, w, h, {
+        grayscale: true,
+        scale: 2.0,
+        monochrome: 128,
+        invertcolors: false
+    })
+    text := result ? Trim(result.Text, " `t`r`n") : ""
+    if (text = "")
+        return ""
+    firstLine := StrSplit(text, "`n", "`r")[1]
+    ; Correct common OCR confusion between O and 0
+    firstLine := StrReplace(StrReplace(firstLine, "O", "0"), "o", "0")
+    number := RegExReplace(firstLine, "[^\d]")
+    return (StrLen(number) >= 5 && StrLen(number) <= 7) ? number : ""
+}
+
+; Reads the captcha, types it, presses Enter and checks the game took it: an accepted captcha closes, a
+; wrong one stays up (or shows a new code). Tries up to 3 codes. Returns true only once it's accepted
+SolveCaptcha(x1 := 235, y1 := 262, x2 := 569, y2 := 309, inputX := 400, inputY := 335, enterX := 300, enterY := 385) {
+    loop 3 {
+        typed := CaptchaDetect(x1, y1, x2, y2, inputX, inputY)
+        if !typed
+            return false
+        FixClick(enterX, enterY)  ; Enter captcha
+
+        ; Give the game a moment, then see if a code is still showing
+        stillUp := false
+        loop 4 {
+            Sleep(500)
+            try stillUp := (ReadCaptchaNumber(x1, y1, x2, y2) != "")
+            catch
+                stillUp := false
+            if !stillUp
+                break
+        }
+        if !stillUp {
+            AddToLog("Captcha accepted")
+            return true
+        }
+        AddToLog("Captcha " typed " was rejected - trying again (" A_Index "/3)")
+    }
+    AddToLog("Captcha failed 3 times")
+    return false
+}
+
+
+DetectMapImageSearch() {
     AddToLog("Trying to determine map using Image Search")
     startTime := A_TickCount
+    robloxWin := "ahk_exe RobloxPlayerBeta.exe"
+    variation := 15   ; main tolerance, same as before
     passes := 0
     loadedAt := 0
+    static unfinished := Map("Air Craft", true, "Hellish City", true) ; Only used if a tie-break fails
 
-    loop {
-        ; Check if we waited more than 5 minute for votestart
-        if (A_TickCount - startTime > 300000) {
-            if (ok := FT(&X, &Y, 746, 514, 789, 530, 0, 0, AreaText)) {
-                AddToLog("Found in lobby - restarting selected mode")
-                return StartSelectedMode()
-            }
-            AddToLog("Could not detect map after 5 minutes - proceeding without movement")
-            return "no map found"
-        }
-
-        ; Check for vote screen - keep looking for 5 more seconds after it shows, since some maps only
-        ; show their name once loaded in (e.g. the "Spirit Town" title)
-        if (!loadedAt && (FT(&X, &Y, 326, 60, 547, 173, 0, 0, VoteStart) or FT(&X, &Y, 340, 537, 468, 557, 0, 0, Yen)))
-            loadedAt := A_TickCount
-        if (loadedAt && A_TickCount - loadedAt > 5000) {
-            AddToLog("No Map Found or Movement Unnecessary")
-            if (passes > 0)
-                AddToLog("Saved what the loading screen looked like to Logs\MapDetect - send it to fix detection")
-            return "no map found"
-        }
-
+    ; Built once instead of every loop pass
+    static loadingScreens := Map()
+    if (!loadingScreens.Count) {
         loadingScreens := Map(
             ; Story Maps
             "Planet Greenie", [PlanetGreenieLoadingScreen],
             "Walled City", [WalledCityLoadingScreen],
-            "Snowy Town", [SnowyTownLoadingScreen],  ; Example of multiple images
+            "Snowy Town", [SnowyTownLoadingScreen],
             "Sand Village", [SandVillageLoadingScreen],
             "Navy Bay", [NavyBayLoadingScreen],
             "Fiend City", [FiendCityLoadingScreen],
             "Spirit World", [SpiritWorldLoadingScreen],
             "Ant Kingdom", [AntKingdomLoadingScreen, AntKingdomLoadingScreen2, AntKingdomLoadingScreen3],
             "Magic Town", [MagicTownLoadingScreen],
-            "Magic Hills", [MagicHillsLoadingScreen, MagicHillsLegendLoadingScreen, MagicHillsLegendLoadingScreenAct3,
-                AntKingdomRaidLoadingScreen],
+            "Magic Hills", [MagicHillsLoadingScreen, MagicHillsLegendLoadingScreen, MagicHillsLegendLoadingScreenAct3, AntKingdomRaidLoadingScreen],
             "Haunted Academy", [HauntedAcademyLoadingScreen],
             "Alien Spaceship", [AlienSpaceshipLoadingScreen],
             "Space Center", [SpaceCenterLoadingScreen],
-            "Fabled Kingdom", [FabledKingdomLoadingScreen, FabledKingdomLoadingScreen2, FabledKingdomLoadingScreen3,
-                FabledKingdomLoadingScreen4],
+            "Fabled Kingdom", [FabledKingdomLoadingScreen, FabledKingdomLoadingScreen2],
             "Ruined City", [RuinedCityLoadingScreen],
             "Puppet Island", [PuppetIslandLoadingScreen],
             "Virtual Dungeon", [VirtualDungeonLoadingScreen],
@@ -860,25 +924,94 @@ DetectMapImageSearch() { ;Imagesearch version
             "Air Craft", [AirCraftLoadingScreen],
             "Hellish City", [HellishCityLoadingScreen]
         )
+    }
 
-        ; Check every map and prefer a finished one if several match (see DetectHuntMap)
-        static unfinished := Map("Air Craft", true, "Hellish City", true)
-        matches := []
-        for mapName, patterns in loadingScreens {
+    ; Returns true if any image of the map is found at the given tolerance
+    MapMatches(patterns, cw, ch, tolerance) {
+        for pattern in patterns {
             try {
-                for pattern in patterns {  ; Iterate through multiple images for each map
-                    if (ok := ImageSearch(&X, &Y, 0, 0, A_ScreenWidth, A_ScreenHeight, "*15 " pattern)) {
-                        matches.Push(mapName)
-                        break
-                    }
-                }
-            } catch {
-                if (debugMessages) {
-                    AddToLog("Error occurred during map detection.")
-                }
+                if (ImageSearch(&X, &Y, 0, 0, cw, ch, "*" tolerance " " pattern))
+                    return true
+            } catch as err {
+                ; A bad file path only skips that image, not the rest of the map
+                ;;AddToLog("ImageSearch error (" pattern "): " err.Message)
             }
         }
-        if (matches.Length > 0) {
+        return false
+    }
+
+    loop {
+        CloseLeaderboard(false)
+
+        ; Check if we waited more than 5 minutes for vote start
+        if (A_TickCount - startTime > 300000) {
+            if (CheckForLobbySettings() && !CheckIfIngame()) {
+                AddToLog("Found in lobby - restarting selected mode")
+                return StartSelectedMode()
+            }
+            AddToLog("Could not detect map after 5 minutes - proceeding without movement")
+            return "no map found"
+        }
+
+        ; Loaded in - but some maps only show their name after loading (the "Spirit Town" title appears
+        ; over the map once the Units button is up), so keep looking for 5 more seconds before giving up
+        if (!loadedAt && HasLoadedIn())
+            loadedAt := A_TickCount
+        if (loadedAt && A_TickCount - loadedAt > 5000) {
+            AddToLog("No map detected before loading in, moving on....")
+            if (passes > 0)
+                AddToLog("Saved what the loading screen looked like to Logs\MapDetect - send it to fix detection")
+            return "no map found"
+        }
+
+        ; Most loading screens write the map's name top left ("Travelling to... Planet Greenie"). Reading it
+        ; works even where the picture differs from the saved one (Infinity Castle shows other camera angles)
+        if (named := ReadLoadingScreenMapName(loadingScreens)) {
+            AddToLog("Detected Map: " named " (read from the loading screen)")
+            return named
+        }
+
+        ; Client size is read once per pass, not once per image
+        if (!WinExist(robloxWin)) {
+            Sleep 1000
+            Reconnect()
+            continue
+        }
+        WinGetClientPos(, , &cw, &ch, robloxWin)
+
+        ; Collect every map that matches instead of returning on the first hit
+        matches := []
+        for mapName, patterns in loadingScreens {
+            if (MapMatches(patterns, cw, ch, variation))
+                matches.Push(mapName)
+        }
+
+        if (matches.Length = 1) {
+            AddToLog("Detected Map: " matches[1])
+            return matches[1]
+        }
+
+        if (matches.Length > 1) {
+            ; Tie-break: tighten the tolerance and keep only the maps that still match
+            for tolerance in [8, 3, 0] {
+                strict := []
+                for mapName in matches {
+                    if (MapMatches(loadingScreens[mapName], cw, ch, tolerance))
+                        strict.Push(mapName)
+                }
+                if (strict.Length = 1) {
+                    AddToLog("Detected Map: " strict[1] " (tie-break at *" tolerance ")")
+                    return strict[1]
+                }
+                if (strict.Length > 1)
+                    matches := strict
+            }
+
+            list := ""
+            for m in matches
+                list .= (list ? ", " : "") m
+
+            ; Still tied at every tolerance - prefer a finished map (unfinished maps' images can show up on others)
             chosen := matches[1]
             for mapName in matches {
                 if !unfinished.Has(mapName) {
@@ -886,13 +1019,7 @@ DetectMapImageSearch() { ;Imagesearch version
                     break
                 }
             }
-            if (matches.Length > 1) {
-                list := ""
-                for mapName in matches
-                    list .= (list = "" ? "" : ", ") mapName
-                AddToLog("Loading screen matched several maps (" list ") - using " chosen)
-            }
-            AddToLog("Detected Map: " chosen)
+            AddToLog("Loading screen matched several maps (" list ") - using " chosen)
             return chosen
         }
 
@@ -903,6 +1030,72 @@ DetectMapImageSearch() { ;Imagesearch version
         Sleep(loadedAt ? 300 : 1000)
         Reconnect()
     }
+}
+
+; Reads the map name under "Travelling to..." on the loading screen and matches it to a known map (the
+; keys of `maps`). Returns "" if there's no readable name. OCR can drop or swap a letter, so small
+; differences are allowed; a single word (the rest covered by a pop-up) only counts if just one map has it
+ReadLoadingScreenMapName(maps) {
+    try {
+        WinGetClientPos(&cx, &cy, &w, &h, rblxID)
+        sx := w / 800, sy := h / 600
+        result := OCR.FromRect(cx + Round(8 * sx), cy + Round(50 * sy), Round(420 * sx), Round(70 * sy), { scale: 2.0 })
+    } catch
+        return ""
+    if !result
+        return ""
+    for line in result.Lines {
+        text := MapNameKey(line.Text)
+        if (StrLen(text) < 5)
+            continue
+        best := "", bestDiff := 99
+        for name in maps {
+            key := MapNameKey(name)
+            if (text = key || InStr(text, key))
+                return name
+            diff := EditDistance(text, key)
+            if (diff < bestDiff)
+                best := name, bestDiff := diff
+        }
+        if (bestDiff <= Max(1, StrLen(text) // 6))
+            return best
+        ; One word of the name - accept it only if no other map shares it
+        hit := "", hits := 0
+        for name in maps {
+            for word in StrSplit(name, " ") {
+                if (MapNameKey(word) = text) {
+                    hit := name, hits += 1
+                    break
+                }
+            }
+        }
+        if (hits = 1)
+            return hit
+    }
+    return ""
+}
+
+MapNameKey(s) => StrLower(RegExReplace(s, "[^A-Za-z]"))
+
+EditDistance(a, b) {
+    la := StrLen(a), lb := StrLen(b)
+    if (Abs(la - lb) > 4)
+        return 99
+    prev := []
+    loop lb + 1
+        prev.Push(A_Index - 1)
+    loop la {
+        i := A_Index
+        cur := [i]
+        ca := SubStr(a, i, 1)
+        loop lb {
+            j := A_Index
+            cost := (ca = SubStr(b, j, 1)) ? 0 : 1
+            cur.Push(Min(prev[j + 1] + 1, cur[j] + 1, prev[j] + cost))
+        }
+        prev := cur
+    }
+    return prev[lb + 1]
 }
 
 ; Saves the Roblox window to Logs\MapDetect\try_N.png (the folder is emptied on the first try of each
@@ -938,7 +1131,7 @@ WaitAndCheck(ms, findText, x1 := 0, y1 := 0, x2 := A_ScreenWidth, y2 := A_Screen
     start := A_TickCount
 
     while (A_TickCount - start < ms) {
-        if (FT(&X, &Y, x1, y1, x2, y2, 0, 0, findText))
+        if (FT(&X, &Y, x1, y1, x2, y2, 0.10, 0.10, findText))
             return false
 
         Sleep(50)
@@ -961,12 +1154,15 @@ CheckAllGameOptions(&report := "") {
     foundAny := false
 
     ; Each option now uses its own FT definition
-    options := [{ name: "Replay", ft: Replay }, { name: "Next Level", ft: NextLevel },      ; change if your variable is named differently
+    options := [
+    { name: "Next Level", ft: NextLevel },
+    { name: "Next Room", ft: NextRoom },
+    { name: "Replay", ft: Replay },
     { name: "Return to Lobby", ft: ReturnToLobby },
     { name: "Retry", ft: Retry }]
 
     for opt in options {
-        if (FT(&X, &Y, 80, 85, 739, 224, 0, 0, opt.ft)) {
+        if (FT(&X, &Y, 137, 94, 663, 147, 0, 0, opt.ft)) {
             report .= "✓ " opt.name " is available`n"
             foundAny := true
         } else {
@@ -981,8 +1177,8 @@ CheckAllGameOptions(&report := "") {
 }
 
 ClickUntilGone(x, y, searchX1, searchY1, searchX2, searchY2, textToFind, offsetX := 0, offsetY := 0, textToFind2 := "") {
-    while (ok := FT(&X, &Y, searchX1, searchY1, searchX2, searchY2, 0, 0, textToFind) || textToFind2 && FT(&X, &Y,
-        searchX1, searchY1, searchX2, searchY2, 0, 0, textToFind2)) {
+    while (ok := FT(&X, &Y, searchX1, searchY1, searchX2, searchY2, 0.10, 0.10, textToFind) || textToFind2 && FT(&X, &Y,
+        searchX1, searchY1, searchX2, searchY2, 0.10, 0.10, textToFind2)) {
         if (offsetX != 0 || offsetY != 0) {
             FixClick(X + offsetX, Y + offsetY)
         } else {
@@ -993,14 +1189,22 @@ ClickUntilGone(x, y, searchX1, searchY1, searchX2, searchY2, textToFind, offsetX
 }
 
 ClickReplay() {
-    if (!WaitAndCheck(2500, Replay, 80, 85, 739, 224) || !WaitAndCheck(2500, Retry, 80, 85, 739, 224)) {
-        return ClickUntilGone(0, 0, 80, 85, 739, 224, Replay, 0, 0) || ClickUntilGone(0, 0, 80, 85, 739, 224, Retry, 0, 0)
+    if (!WaitAndCheck(7500, Replay, 139, 99, 660, 144) || !WaitAndCheck(7500, Retry, 139, 99, 660, 144)) {
+        return ClickUntilGone(0, 0, 139, 99, 660, 144, Replay, 0.10, 0.10) || ClickUntilGone(0, 0, 139, 99, 660, 144, Retry, 0.10, 0.10)
     }
 }
 
 ClickNextLevel() {
-    if (!WaitAndCheck(2500, NextLevel, 80, 85, 739, 224)) {
-        return ClickUntilGone(0, 0, 80, 85, 739, 224, NextLevel, -5)
+    if (!WaitAndCheck(7500, NextLevel, 139, 99, 660, 144)) {
+        AddToLog("Next level button detected, clicking...")
+        return ClickUntilGone(0, 0, 139, 99, 660, 144, NextLevel, -5)
+    }
+}
+
+ClickNextRoom() {
+    if (!WaitAndCheck(7500, NextRoom, 139, 99, 660, 144)) {
+        AddToLog("Next room button detected, clicking...")
+        return ClickUntilGone(0, 0, 139, 99, 660, 144, NextRoom, -5)
     }
 }
 
@@ -1015,7 +1219,7 @@ ClickReturnToLobby() {
     while (A_TickCount - start < 90000) {
         if CheckForLobby()
             return true
-        if FT(&X, &Y, 80, 85, 739, 224, 0, 0, ReturnToLobby) {
+        if FT(&X, &Y, 80, 85, 739, 224, 0.10, 0.10, ReturnToLobby) {
             if (spot = "")
                 AddToLog("Clicking Return to Lobby until the lobby loads")
             spot := lastSpot := { x: X, y: Y } ; FindText gives the centre of the button

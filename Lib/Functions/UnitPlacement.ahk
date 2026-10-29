@@ -4,7 +4,12 @@ global lastSpotOccupied := false ; Set by PlaceUnit when another unit already st
 global lastPlacementUnconfirmed := false
 global lastSpotRed := false        ; The last spot showed a red bubble, so nothing was clicked
 global redSpots := Map()           ; "x,y" -> true for spots that showed a red bubble this match
-global bubbleCheckOff := false     ; Turned off for the match if it marked every spot red (fooled by the map) ; The last placement attempt wasn't confirmed by the Unit Overview
+global bubbleCheckOff := false     ; Turned off for the match if it marked every spot red (fooled by the map)
+global lastPlacementAttempt := ""  ; { slot, x, y } of the last placement click
+global placementArgs := ""         ; Placement order, spots and retry settings - used to re-place missing units
+global placementCapped := Map()    ; slot -> true once the game won't take more copies (normal placement)
+global spotStrikes := Map()        ; "x,y" -> failed clicks there this match (spot blocked, not money)
+global failStreak := []            ; Spots that failed since the last successful placement
 
 StartPlacingUnits(untilSuccessful := true) {
     global successfulCoordinates, maxedCoordinates
@@ -14,6 +19,11 @@ StartPlacingUnits(untilSuccessful := true) {
     global redSpots := Map()
     global bubbleCheckOff := false
     global stageEnded := false
+    global lastPlacementAttempt := ""
+    global placementCapped := Map()
+    global lastUnitRecount := 0
+    global spotStrikes := Map()
+    global failStreak := []
 
     maxAttemptsPerSpot := 20 ; Failed tries at one spot before moving to the next
     maxFailedSpots := 3      ; Spots in a row that fail before giving up on the unit
@@ -109,6 +119,9 @@ StartPlacingUnits(untilSuccessful := true) {
         return MonitorStage()
     }
 
+    global placementArgs := { order: placementOrder, points: placementPoints, untilSuccessful: untilSuccessful
+        , maxAttempts: maxAttemptsPerSpot, maxFailed: maxFailedSpots }
+
     if (TypeStrategyBox.Value) {
         ; The strategy places and upgrades everything itself
         RunTypeStrategy(placementPoints, untilSuccessful, maxAttemptsPerSpot, maxFailedSpots)
@@ -146,7 +159,7 @@ StartPlacingUnits(untilSuccessful := true) {
 
             ; If enabled, place all units for this slot - each copy on a random free spot
             if (enabled && placements > 0) {
-                HandleStartButton() ; Check for start button if placement failed
+                ClickVoteStartIfShown() ; Check for start button if placement failed
                 AddToLog("Placing Unit " slotNum " (0/" placements ")")
 
                 while (placedCounts[slotNum] < placements) {
@@ -155,6 +168,7 @@ StartPlacingUnits(untilSuccessful := true) {
                         return HandleStageEnd()
                     if (result = "gaveup") {
                         AddToLog("Unit " slotNum " couldn't be placed (" placedCounts[slotNum] "/" placements "), max placement likely reached - moving on")
+                        placementCapped[slotNum] := true
                         break
                     }
                 }
@@ -175,9 +189,9 @@ StartPlacingUnits(untilSuccessful := true) {
 ; Placements amount. If it's a unit's turn and it can't be placed yet (e.g. not enough money), wait
 ; for it - skipping ahead would let cheaper units take all the early spots
 PlaceUnitsEvenly(placementOrder, placementPoints, untilSuccessful, maxAttemptsPerSpot, maxFailedSpots) {
-    global placedCounts
+    global placedCounts, placementCapped
     AddToLog("Placing units evenly in priority order")
-    HandleStartButton()
+    ClickVoteStartIfShown()
 
     active := []
     for slotNum in placementOrder {
@@ -193,8 +207,10 @@ PlaceUnitsEvenly(placementOrder, placementPoints, untilSuccessful, maxAttemptsPe
             result := PlaceOneUnit(slotNum, placementPoints, untilSuccessful, maxAttemptsPerSpot, maxFailedSpots)
             if (result = "ended")
                 return "ended"
-            if (result = "gaveup")
+            if (result = "gaveup") {
                 AddToLog("Unit " slotNum " couldn't be placed (" placedCounts[slotNum] "/" SlotPlacements(slotNum) "), max placement likely reached - moving on")
+                placementCapped[slotNum] := true
+            }
             if (result = "gaveup" || placedCounts[slotNum] >= SlotPlacements(slotNum)) {
                 for i, s in active {
                     if (s = slotNum) {
@@ -218,6 +234,7 @@ PlaceOneUnit(slotNum, placementPoints, untilSuccessful, maxAttemptsPerSpot, maxF
     ; likely won't take more of this unit
     budget := Max(1, maxAttemptsPerSpot * maxFailedSpots)
     tries := 0
+    placementPoints := SpotsForSlot(placementPoints, slotNum)
     while (tries < budget) {
         free := FreeSpotsShuffled(placementPoints)
         if (free.Length = 0) {
@@ -225,12 +242,18 @@ PlaceOneUnit(slotNum, placementPoints, untilSuccessful, maxAttemptsPerSpot, maxF
             return "gaveup"
         }
         for point in free {
-            if PlaceUnit(point.x, point.y, slotNum) {
+            placed := PlaceUnit(point.x, point.y, slotNum)
+            if (placed = "late") ; The last try of this unit went through after all - already recorded
+                return "placed"
+            if placed {
+                ConfirmSpotFailures()
                 RecordPlacedUnit(point, slotNum)
                 return "placed"
             }
             if stageEnded
                 return "ended"
+            if !lastSpotRed ; A red bubble skips the spot without clicking - that's already handled
+                NoteSpotFailure(point)
             PostPlacementChecks()
             if (stageEnded || isMenuOpen("End Screen"))
                 return "ended"
@@ -239,22 +262,73 @@ PlaceOneUnit(slotNum, placementPoints, untilSuccessful, maxAttemptsPerSpot, maxF
                 return "ended"
             if (tries >= budget)
                 break
-            Sleep(300) ; Prevents spamming clicks too fast
+            Sleep(80) ; Prevents spamming clicks too fast
         }
     }
     AddToLog("Unit " slotNum " couldn't be placed after " tries " tries")
     return "gaveup"
 }
 
-; Placement spots nobody is standing on yet, in a random order
+; The Path pattern finds two sets of spots: by the path for attackers, away from it for Farm units
+; (Unit Type = Farm). Other patterns have one set for everyone
+SpotsForSlot(placementPoints, slotNum) {
+    if (!placementPoints.HasOwnProp("farm") || UnitTypeOf(slotNum) != "Farm" || placementPoints.farm.Length = 0)
+        return placementPoints
+    return placementPoints.farm
+}
+
+; A click that didn't place a unit: either the spot is blocked (rock, tree, another player's unit) or
+; there wasn't enough money. Can't tell yet, so it's only noted here and decided on the next success
+NoteSpotFailure(point) {
+    global failStreak
+    failStreak.Push(point.x "," point.y)
+}
+
+; A unit just went down, so money wasn't the problem for the spots that failed right before it - they're
+; blocked and each gets a strike. A long run of failures (3+) looks like waiting for money instead, so
+; then none do. Two strikes and the spot isn't used again this match
+ConfirmSpotFailures() {
+    global failStreak, spotStrikes
+    if (failStreak.Length <= 2) {
+        for key in failStreak {
+            spotStrikes[key] := (spotStrikes.Has(key) ? spotStrikes[key] : 0) + 1
+            if (spotStrikes[key] = 2)
+                AddToLog("Spot " key " keeps failing - not using it again this match")
+        }
+    }
+    failStreak := []
+}
+
+StrikesFor(point) {
+    global spotStrikes
+    key := point.x "," point.y
+    return spotStrikes.Has(key) ? spotStrikes[key] : 0
+}
+
+; Spots without a strike first, keeping their order
+StrikesLast(spots) {
+    clean := [], struck := []
+    for p in spots
+        (StrikesFor(p) ? struck : clean).Push(p)
+    for p in struck
+        clean.Push(p)
+    return clean
+}
+
+; Placement spots nobody is standing on yet, in a random order - or best first for the Path pattern.
+; Spots that failed before go to the back, and spots that failed twice are left out
 FreeSpotsShuffled(placementPoints) {
-    global redSpots, bubbleCheckOff
-    free := [], skippedRed := 0
+    global redSpots, bubbleCheckOff, spotStrikes
+    free := [], skippedRed := 0, skippedStruck := 0
     for point in placementPoints {
         if PointAlreadyUsed(point)
             continue
         if redSpots.Has(point.x "," point.y) {
             skippedRed += 1
+            continue
+        }
+        if (StrikesFor(point) >= 2) {
+            skippedStruck += 1
             continue
         }
         free.Push(point)
@@ -270,13 +344,20 @@ FreeSpotsShuffled(placementPoints) {
                 free.Push(point)
         }
     }
+    if (free.Length = 0 && skippedStruck > 0 && skippedRed = 0) {
+        AddToLog("Every free spot has failed twice - giving them all another chance")
+        spotStrikes := Map()
+        return FreeSpotsShuffled(placementPoints)
+    }
+    if placementPoints.HasOwnProp("ordered")
+        return StrikesLast(free)
     i := free.Length
     while (i > 1) {
         j := Random(1, i)
         temp := free[i], free[i] := free[j], free[j] := temp
         i -= 1
     }
-    return free
+    return StrikesLast(free)
 }
 
 PointAlreadyUsed(point) {
@@ -314,11 +395,12 @@ RecordPlacedUnit(point, slotNum) {
     if (upgradeEnabled) {
         EnableAutoUpgrade(successfulCoordinates[successfulCoordinates.Length].placementIndex)
     }
+    SendInput("Q")
     if (abilityEnabled) {
-        if HandleAutoAbility()
+        Sleep(300)
+        if OpenUnitAbility(point.x, point.y)
             successfulCoordinates[successfulCoordinates.Length].hasAbility := false
     }
-    SendInput("Q")
 }
 
 SlotPlacements(slotNum) {
@@ -332,40 +414,35 @@ PlaceUnit(x, y, slot := 1) {
         CheckForCardSelection()
     }
 
-    ; A panel left open from the last unit would make this placement look successful - close it first
-    if PlacementPanelOpen() {
-        SendInput("q")
-        start := A_TickCount
-        while (PlacementPanelOpen() && A_TickCount - start < 1000)
-            Sleep(50)
-        if PlacementPanelOpen()
-            AddToLog("Unit panel didn't close before placing - placement check may be wrong")
+    ; An upgrade panel showing now means the last placement went through after its check timed out.
+    ; Record it there - otherwise the retry would add another unit the script doesn't know about
+    global lastPlacementUnconfirmed, lastPlacementAttempt
+    late := ""
+    if (lastPlacementUnconfirmed && PlacementPanelOpen() && IsObject(lastPlacementAttempt)) {
+        late := lastPlacementAttempt
+        AddToLog("The last placement of Unit " late.slot " did go through (its upgrade panel showed up late)")
+        if !placedCounts.Has(late.slot)
+            placedCounts[late.slot] := 0
+        RecordPlacedUnit({ x: late.x, y: late.y }, late.slot)
     }
+    lastPlacementUnconfirmed := false
+
+    ; A panel left open would make this placement look successful - close it first
+    if !ClosePlacementPanel()
+        AddToLog("Unit panel didn't close before placing - placement check may be wrong")
+    if (IsObject(late) && late.slot = slot)
+        return "late"
 
     ; The occupied-spot check needs the name-label check, which is paused (see "Saved attempts")
     global lastSpotOccupied := false
 
-    ; The overview covers the right side of the map, so it must be closed before clicking
-    CloseUnitOverview()
-    if CheckStageInterruptions(true)
+    ; The overview covers the right side of the map, so it must be closed before clicking. Checking its
+    ; title is much quicker than scanning for cards
+    if IsOverviewPanelOpen()
+        CloseUnitOverview()
+    if CheckStageInterruptionsEvery()
         return false
 
-    ; The last placement wasn't confirmed, but its card may just have shown up late. If it's there now,
-    ; that unit counts and nothing new is placed - otherwise every retry would add another unit
-    global lastPlacementUnconfirmed
-    if lastPlacementUnconfirmed {
-        lastPlacementUnconfirmed := false
-        expected := PlacedUnitCount() + 1
-        found := OverviewUnitCount(expected)
-        CloseUnitOverview()
-        if found {
-            AddToLog("The last placement did go through (" found " units in the Unit Overview)")
-            RecordMissedUnits(found - expected, x, y, slot)
-            return true
-        }
-    }
-
-    Sleep 50
     SendInput(slot)
 
     ; Holding a unit shows a bubble at the mouse: blue = can place, red = can't (hill, rock, other unit).
@@ -381,14 +458,12 @@ PlaceUnit(x, y, slot := 1) {
         return false
     }
 
+    lastPlacementAttempt := { slot: slot, x: x, y: y }
     FixClick(x, y)
     Sleep 50
     SendInput("q")
 
-    expected := PlacedUnitCount() + 1
-    found := UnitPlaced(expected)
-    if found {
-        RecordMissedUnits(found - expected, x, y, slot)
+    if UnitPlaced() {
         Sleep 15
         return true
     }
@@ -396,38 +471,53 @@ PlaceUnit(x, y, slot := 1) {
     return false
 }
 
-; Checks the placement worked by opening the Unit Overview (F) and checking it lists at least
-; `expected` units. Returns the number listed, or 0. Keeps checking for the Placement Speed time (at
-; least 3 seconds), then closes the overview so the next placement click isn't blocked
-UnitPlaced(expected) {
-    start := A_TickCount
-    timeout := Max(GetPlacementSpeed(), 3000) ; The card can take a moment to appear
-    found := 0
-    loop {
-        found := OverviewUnitCount(expected)
-        if found
-            break
-        if CheckStageInterruptions()
-            break
-        Sleep(200)
-    } until (A_TickCount - start >= timeout)
-    CloseUnitOverview()
-
-    if found
-        AddToLog("Unit Placed Successfully (" found " units in the Unit Overview)")
-    return found
+; Checks the placement worked: with auto-open upgrade UI on, the game opens the new unit's upgrade panel
+; right after a placement (PlaceUnit closes any panel left open before clicking), so the panel showing
+; up within the Placement Speed time confirms it. The panel is closed straight away so it can't cover
+; the next spot
+UnitPlaced() {
+    ; The panel shows within about half a second of a good placement. Waiting the full Placement Speed
+    ; after a failed one just let other players take the spot - a panel that shows up later still counts
+    ; (PlaceUnit checks for it before the next try)
+    if !WaitForUpgradeText(Min(GetPlacementSpeed(), 1200))
+        return false
+    AddToLog("Unit Placed Successfully")
+    ClosePlacementPanel()
+    return true
 }
 
-; A placement that went through without being confirmed leaves a unit the script doesn't know about,
-; which would shift the overview's unit order. Record it as this slot, at this spot
-RecordMissedUnits(extra, x, y, slot) {
-    global placedCounts
-    loop extra {
-        AddToLog("The Unit Overview has a unit that wasn't recorded - counting it as Unit " slot)
-        if !placedCounts.Has(slot)
-            placedCounts[slot] := 0
-        RecordPlacedUnit({ x: x, y: y }, slot)
+; Closes the unit upgrade panel if it's open. Returns false if it's still open after a second
+ClosePlacementPanel() {
+    if !PlacementPanelOpen()
+        return true
+    SendInput("q")
+    start := A_TickCount
+    while (PlacementPanelOpen() && A_TickCount - start < 1000)
+        Sleep(50)
+    return !PlacementPanelOpen()
+}
+
+; Places any copies still missing (e.g. a recount found a recorded unit was never really placed) for
+; the normal placement modes. Returns false if the stage ended
+RefillMissingUnits() {
+    global placementArgs, placedCounts, placementCapped, stageEnded
+    if (!IsObject(placementArgs) || TypeStrategyBox.Value)
+        return true
+    a := placementArgs
+    for slot in a.order {
+        enabled := "enabled" slot
+        if (!%enabled%.Value || !placedCounts.Has(slot))
+            continue
+        while (placedCounts[slot] < SlotPlacements(slot) && !placementCapped.Has(slot)) {
+            AddToLog("Unit " slot " is missing a copy (" placedCounts[slot] "/" SlotPlacements(slot) ") - placing it")
+            result := PlaceOneUnit(slot, a.points, a.untilSuccessful, a.maxAttempts, a.maxFailed)
+            if (result = "ended" || stageEnded)
+                return false
+            if (result = "gaveup")
+                placementCapped[slot] := true
+        }
     }
+    return true
 }
 
 ; Units placed so far this match (maxed units are still on the map)
@@ -493,7 +583,17 @@ GetPlacementSpeed() {
 }
 
 PostPlacementChecks() {
-    HandleStartButton()
+    static lastSlowCheck := 0
+    ClickVoteStartIfShown()
+
+    ; Cards and the results screen are checked every time (one quick look); the lobby, Fool's Hunt buffs
+    ; and the full stage check only every 5 seconds - running them after every failed try made each try
+    ; take over a second
+    if CheckStageInterruptionsEvery(15000)
+        return
+    if (A_TickCount - lastSlowCheck < 5000)
+        return
+    lastSlowCheck := A_TickCount
 
     if (ModeDropdown.Text = "Event" && EventDropdown.Text = "Fool's Hunt") {
         CheckForFoolBuffs()
@@ -503,12 +603,11 @@ PostPlacementChecks() {
         AddToLog("Found in lobby, restarting mode if possible")
         return CheckLobby()
     }
-
-    CheckStageInterruptions(true) ; Cards, results screen, reconnect
 }
 
 ResetPlacementTracking() {
-    global successfulCoordinates, maxedCoordinates
+    global successfulCoordinates, maxedCoordinates, lastPlacementUnconfirmed
+    lastPlacementUnconfirmed := false ; A late panel from last match must not count in this one
     successfulCoordinates := []
     maxedCoordinates := []
 }
@@ -556,10 +655,10 @@ PlacementBubbleIsRed(x, y, &score := 0, &share := 0) {
             best := dx * dx + dy * dy, parkX := Round(w * corner[1]), parkY := Round(h * corner[2])
     }
     MouseMove(parkX, parkY)
-    Sleep(200)
+    Sleep(120)
     before := BubbleTints(points, cx, cy, w, h)
     MouseMove(x, y)
-    Sleep(250) ; Let the bubble follow the mouse
+    Sleep(160) ; Let the bubble follow the mouse
     after := BubbleTints(points, cx, cy, w, h)
 
     changes := [], redder := 0

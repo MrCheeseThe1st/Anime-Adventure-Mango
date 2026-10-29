@@ -66,6 +66,8 @@ UpgradeEvenly() {
     AddToLog("Upgrading evenly in priority order")
 
     loop {
+        if !RefillMissingUnits()
+            return
         queue := EvenUpgradeQueue()
         if (queue.Length = 0)
             break
@@ -274,7 +276,7 @@ ProcessUpgrades(slot := false, priorityNum := false) {
 
     ; Full upgrade loop
     while (true) {
-        if stageEnded
+        if (stageEnded || !RefillMissingUnits())
             return
         slotDone := true
 
@@ -303,11 +305,6 @@ ProcessUpgrades(slot := false, priorityNum := false) {
                     continue
                 }
 
-                ; Extra upgrade press only when no limit is set, otherwise it would skip past the limit level
-                if (!UnitManagerUpgradeSystem.Value && !IsLimitActive(coord.slot)) {
-                    SendInput("R")
-                }
-
                 PostUpgradeChecks(coord)
                 if stageEnded
                     return
@@ -328,47 +325,118 @@ ProcessUpgrades(slot := false, priorityNum := false) {
 ; Loose colour match over a small area - Roblox's lighting and anti-aliasing shift the exact colour and
 ; position slightly, which made the old exact 4x4 check miss real placements
 PlacementPanelOpen() {
-    return GetPixel(0x17D6FE, 23, 363, 12, 12, 25)
+    return GetPixel(0x17D6FE, 20, 360, 30, 25, 15) ; Ryn v0.3.6 region: wider area, tighter colour
 }
 
 WaitForUpgradeText(timeout := 4500) {
-    sleep 100
     startTime := A_TickCount
     while (A_TickCount - startTime < timeout) {
         if (PlacementPanelOpen()) {
-            if (CheckForElyssiaSummon()) {
+            if (CheckForElyssiaSummon())
                 return false
-            }
-            timeSaved := (A_TickCount - startTime)  ; Time saved
-            if (debugMessages) {
-                AddToLog("Upgrade text found! Time saved: " . timeSaved . " ms")
-            }
+            if (debugMessages)
+                AddToLog("Upgrade text found in " (A_TickCount - startTime) " ms")
             return true
         }
-        Sleep 50  ; Check every 100ms
+        Sleep 50
     }
-    if (debugMessages) {
-        AddToLog("Timed out! No upgrade text found. Timeout was: " . timeout . " ms")
-    }
-    return false  ; Timed out, upgrade text was not found
+    if (debugMessages)
+        AddToLog("Timed out, no upgrade text. Timeout: " timeout " ms")
+    return false
 }
 
 WaitForUpgradeLimitText(upgradeCap, timeout := 4500) {
     upgradeTexts := [
-        Upgrade0, Upgrade1, Upgrade2, Upgrade3, Upgrade4, Upgrade5, Upgrade6, Upgrade7,
-        Upgrade8, Upgrade9, Upgrade10, Upgrade11, Upgrade12, Upgrade13, Upgrade14
+        [Upgrade0],
+        [Upgrade1],
+        [Upgrade2],
+        [Upgrade3],
+        [Upgrade4],
+        [Upgrade5],
+        [Upgrade6],
+        [Upgrade7],
+        [Upgrade8],
+        [Upgrade9]
     ]
-    targetText := upgradeTexts[upgradeCap]
+
+    if (upgradeCap < 1 || upgradeCap > upgradeTexts.Length)
+        return false
+
+    targetTexts := upgradeTexts[upgradeCap]
+
+    if (!IsObject(targetTexts) || targetTexts.Length = 0)
+        return false
 
     startTime := A_TickCount
+
     while (A_TickCount - startTime < timeout) {
-        if (FT(&X, &Y, 161, 194, 318, 225, 0, 0, targetText)) {
-            AddToLog("Found Upgrade Cap")
-            return true
+        for _, targetText in targetTexts {
+            if (Trim(targetText) = "")
+                continue
+
+            if (FT(&X, &Y, 186, 351, 317, 387, 0, 0, MaxText) or (ok := FT(&X, &Y, 161, 194, 318, 225, 0, 0, MaxTextNew))) {
+                AddToLog("Found Max Text " MaxText)
+                return true
+            }
+
+            if (FT(&X, &Y, 166, 195, 316, 223, 0, 0, targetText)) {
+                AddToLog("Found Upgrade Cap " upgradeCap)
+                return true
+            }
         }
-        Sleep 100
+
+        Sleep(100)
     }
-    return false  ; Timed out
+
+    return false
+}
+
+TestUpgradeLimitTexts(resultEdit := true) {
+
+    upgradeTexts := [
+        [Upgrade0],
+        [Upgrade1],
+        [Upgrade2],
+        [Upgrade3],
+        [Upgrade4],
+        [Upgrade5],
+        [Upgrade6],
+        [Upgrade7],
+        [Upgrade8],
+        [Upgrade9]
+    ]
+
+    ResultEdit.Value .= "Testing all upgrade limit texts...`n"
+
+    foundCount := 0
+    upgradeFound := false
+
+    ; Check upgrade texts first
+    for level, targetTexts in upgradeTexts {
+        for variant, targetText in targetTexts {
+            if (Trim(targetText) = "")
+                continue
+
+            if (FT(&X, &Y, 166, 195, 316, 223, 0, 0, targetText)) {
+                ResultEdit.Value .= "Found Upgrade" (level - 1) " variant " variant " at X: " X ", Y: " Y "`n"
+
+                foundCount++
+                upgradeFound := true
+            }
+        }
+    }
+
+    ; Only check MaxText if no upgrade text was found
+    if (!upgradeFound) {
+        if (FT(&X, &Y, 186, 351, 317, 387, 0, 0, MaxText)
+        || FT(&X, &Y, 161, 194, 318, 225, 0, 0, MaxTextNew)) {
+
+            ResultEdit.Value .= "Found Max Text (upgrade limit detected).`n"
+            foundCount++
+        }
+    }
+
+    ResultEdit.Value .= "Found " foundCount " matching pattern(s).`n`n"
 }
 
 UpgradeUnitWithLimit(coord, index) {
@@ -405,7 +473,7 @@ UpgradeUnitWithLimit(coord, index) {
 
 UpgradeUnitLimit(coord, index, upgradeLimit) {
     FixClick(coord.x, coord.y)
-    if (WaitForUpgradeLimitText(upgradeLimit + 1, 750)) {
+    if (WaitForUpgradeLimitText(upgradeLimit + 1, 1500)) {
         HandleMaxUpgrade(coord, index)
         return true
     }
@@ -457,7 +525,13 @@ PostUpgradeChecks(coord) {
 }
 
 StageEndedDuringUpgrades() {
-    return CheckForXp()
+    if (CheckForXP())
+        return true
+
+    if (EndButtonsVisible()) {
+        return true
+    }
+    return false
 }
 
 IsUpgradeEnabled(slotNum) {
@@ -584,7 +658,7 @@ SetTotalUnits() {
 MaxUpgrade() {
     Sleep 500
     ; Check for max text
-    if (ok := FT(&X, &Y, 186, 351, 317, 387, 0, 0, MaxText) or (ok := FT(&X, &Y, 161, 194, 318, 225, 0, 0, MaxTextNew))) {
+    if (ok := FT(&X, &Y, 188, 350, 310, 387, 0, 0, MaxText) or (ok := FT(&X, &Y, 161, 194, 318, 225, 0, 0, MaxTextNew))) {
         if (CheckForElyssiaSummon()) {
             return false
         }
@@ -595,7 +669,7 @@ MaxUpgrade() {
 }
 
 CheckForElyssiaSummon() {
-    if FT(&X, &Y, 14, 226, 138, 246, 0, 0, ElyssiaSummons) {
+    if FT(&X, &Y, 16, 195, 131, 216, 0, 0, ElyssiaSummons) {
         AddToLog("Clicked on Elyssia Eel, ignoring...")
         return true
     }

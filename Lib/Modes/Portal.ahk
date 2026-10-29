@@ -173,7 +173,8 @@ HandlePortalFallback(lobby := false) {
     if (!lobby) {
         ClickReturnToLobby()
     }
-    return CheckLobby()
+    CheckLobby()
+    return StartSelectedMode()
 }
 
 HandlePortalEnd() {

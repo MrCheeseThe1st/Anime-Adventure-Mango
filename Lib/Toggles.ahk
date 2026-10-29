@@ -6,3 +6,4 @@ global autoAbilityDisabled := false
 global unitUpgradeLimitDisabled := false
 global unitManagerDisabled := false
 global autoUpgradeDisabled := true
+global IncreaseUnitPlacements := true

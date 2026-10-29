@@ -17,7 +17,8 @@
 ;      Spare money is spent as it goes: after every placement, and every 3 failed tries while a placement
 ;      keeps failing, units are upgraded in priority order until nothing more is affordable
 ;  10. Until everything is maxed or at its limit: go down the step 9 order giving each unit up to 2
-;      upgrades it can afford right now - a unit that's too expensive is skipped until the next pass
+;      upgrades it can afford right now - a unit that's too expensive is skipped until the next pass.
+;      If a recount of the Unit Overview shows a unit is missing (farms included), it's placed again first
 ; "Level N" = N lit segments on the Unit Overview bar. A unit's Upgrade Limit always wins over a step's
 ; target. If a unit can't be afforded, the script waits for it. Cards and the end screen are handled
 ; between every action (CheckStageInterruptions)
@@ -41,7 +42,7 @@ RunTypeStrategy(placementPoints, untilSuccessful, maxAttemptsPerSpot, maxFailedS
         UnitManagerUpgradeSystem.Value := 1
     }
     AddToLog("Using the unit-type strategy")
-    HandleStartButton()
+    ClickVoteStartIfShown()
 
     farms := SlotsOfType("Farm")
     supports := SlotsOfType("Support")
@@ -129,28 +130,13 @@ RunTypeStrategy(placementPoints, untilSuccessful, maxAttemptsPerSpot, maxFailedS
             return
     }
 
-    ; 9. Anything step 6b couldn't place, one upgrade after each placement
-    missing := false
-    for slot in later {
-        if (placedCounts[slot] < SlotPlacements(slot) && !strategyCapped.Has(slot))
-            missing := true
-    }
-    if missing
-        StrategyStep(9, "placing the units still missing")
-    for slot in later {
-        while (placedCounts[slot] < SlotPlacements(slot) && !strategyCapped.Has(slot)) {
-            before := placedCounts[slot]
-            if !StrategyPlace(slot, before + 1, true)
-                return
-            if (placedCounts[slot] > before) {
-                copies := CopiesOfSlots([slot])
-                if (UpgradeOnce(copies[copies.Length]) = "ended")
-                    return
-                if !StrategySpendMoney()
-                    return
-            }
-        }
-    }
+    ; 9. Anything step 6b couldn't place, one upgrade after each placement. From here on farms count too -
+    ; a recount of the Unit Overview can find any unit missing
+    everyone := later.Clone()
+    for slot in farms
+        everyone.Push(slot)
+    if !StrategyPlaceMissing(everyone)
+        return
 
     ; 10. Upgrade whatever can be afforded, in priority order: each pass goes down the step 9 order and
     ; gives every unit up to 2 upgrades it can pay for right now. A unit that's too expensive is skipped
@@ -158,8 +144,10 @@ RunTypeStrategy(placementPoints, untilSuccessful, maxAttemptsPerSpot, maxFailedS
     StrategyStep(10, "upgrading every unit to MAX or its limit, whatever is affordable in priority order")
     loggedWait := false
     loop {
+        if !StrategyPlaceMissing(everyone)
+            return
         anyLeft := false, anyUpgraded := false
-        for coord in CopiesOfSlots(later) {
+        for coord in CopiesOfSlots(everyone) {
             loop 2 {
                 result := UpgradeOnce(coord, "MAX", false)
                 if (result = "ended")
@@ -187,6 +175,32 @@ RunTypeStrategy(placementPoints, untilSuccessful, maxAttemptsPerSpot, maxFailedS
         Sleep(1000)
     }
     AddToLog("Unit-type strategy finished - every unit is maxed or at its limit")
+}
+
+; Places every copy of `slots` that's still missing, upgrading each new one once and spending spare
+; money after it. Returns false once the stage has ended
+StrategyPlaceMissing(slots) {
+    global placedCounts, strategyCapped
+    announced := false
+    for slot in slots {
+        while (placedCounts[slot] < SlotPlacements(slot) && !strategyCapped.Has(slot)) {
+            if !announced {
+                StrategyStep(9, "placing the units still missing")
+                announced := true
+            }
+            before := placedCounts[slot]
+            if !StrategyPlace(slot, before + 1, true)
+                return false
+            if (placedCounts[slot] > before) {
+                copies := CopiesOfSlots([slot])
+                if (UpgradeOnce(copies[copies.Length]) = "ended")
+                    return false
+                if !StrategySpendMoney()
+                    return false
+            }
+        }
+    }
+    return true
 }
 
 StrategyStep(number, text) {
@@ -326,7 +340,7 @@ UpgradeOnce(coord, target := "MAX", wait := true) {
                     ; Give up on it for this match after 3 skips, so it doesn't hold up every round
                     coord.strategySkips := (coord.HasOwnProp("strategySkips") ? coord.strategySkips : 0) + 1
                     if (coord.strategySkips >= 3) {
-                        coord.strategyDone := true
+                        coord.strategyDone := true, coord.skippedOut := true ; A recount gives it another chance
                         AddToLog("Couldn't read Unit " coord.slot " in the Unit Overview 3 times - leaving it as it is")
                     } else {
                         AddToLog("Couldn't find Unit " coord.slot " in the Unit Overview - skipping it for now")

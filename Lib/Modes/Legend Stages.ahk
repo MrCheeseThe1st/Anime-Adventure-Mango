@@ -23,7 +23,7 @@ StartLegendStage() {
     StoryMovement()
 
     ; Start stage
-    while !(ok := FT(&X, &Y, 325, 520, 489, 587, 0, 0, ModeCancel)) {
+    while !(ok := FT(&X, &Y, 344, 506, 458, 540, 0, 0, ModeCancel)) {
         StoryMovement()
     }
 

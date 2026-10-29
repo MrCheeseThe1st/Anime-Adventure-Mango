@@ -164,6 +164,8 @@ GetPlacementsForMode(mode) {
             return currentMap != "" ? currentMap : PortalDropdown.Text
         case "Event":
             return currentMap != "" ? currentMap : EventDropdown.Text
+        case "Infinity Castle", "Contracts":
+            return currentMap != "" ? currentMap : CustomPlacementMapDropdown.Text
         case "Custom":
             return CustomPlacementMapDropdown.Text
     }

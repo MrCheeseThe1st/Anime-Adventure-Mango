@@ -5,13 +5,14 @@
 ;  Skinnypigthe2nd's Anime Adventure Mango
 ;  https://github.com/MrCheeseThe1st/Anime-Adventure-Mango
 ;
-;  Based on Ryn's Anime Adventures Macro (free v0.2.7) by Ryn (@TheRealTension)
+;  Based on Ryn's Anime Adventures Macro (free v0.3.6) by Ryn (@TheRealTension)
 ;  https://github.com/itsRynsRoblox/Anime-Adventures-Redux - shared with Ryn's permission.
 ;  All credit for the original macro goes to Ryn. See README.md for what changed.
 ; =====================================================================================
 SendMode "Event"
 TraySetIcon("Images\Icon.ico")
 CoordMode "Mouse", "Client"
+CoordMode "Pixel", "Client"
 
 /*if !A_IsAdmin {
     result := MsgBox(
@@ -60,8 +61,6 @@ DirCreate(A_ScriptDir "\Settings\Export")
 #Include %A_ScriptDir%/lib/Tools/FindText.ahk
 #Include %A_ScriptDir%/lib/Tools/Image.ahk
 #Include %A_ScriptDir%\Lib\OCR-main\Lib\OCR.ahk
-#Include Lib\RapidOcr\ImagePut.ahk
-#Include %A_ScriptDir%/lib/Tools/RapidOcr.ahk
 #Include %A_ScriptDir%/lib/Tools/jsongo.v2.ahk
 #Include %A_ScriptDir%/lib/Tools/WindowFollow.ahk
 

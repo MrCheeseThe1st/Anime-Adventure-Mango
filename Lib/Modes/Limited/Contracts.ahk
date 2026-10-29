@@ -13,6 +13,7 @@ StartContracts() {
 }
 
 HandleContractJoin() {
+    global matchmakingSince
     loop {
         selectedPage := ContractPageDropdown.Text
         joinType := ContractJoinDropdown.Text
@@ -72,21 +73,23 @@ HandleContractJoin() {
         } else if (joinType = "Solo") {
             if (MatchMaking.Value) {
                 AddToLog("Joining matchmaking for contract on page " pageNum)
+                if (MatchmakingTimedOut())
+                    return RejoinAfterMatchmaking()
                 FixClick(pageCoords.matchmaking.x, pageCoords.matchmaking.y)  ; Click matchmaking button
                 Sleep(300)
 
                 ; Try captcha
-                if (!CaptchaDetect(252, 292, 300, 50, 400, 335)) {
-                    AddToLog("Captcha not detected, retrying...")
+                if (!SolveCaptcha()) {
+                    AddToLog("Captcha not solved, retrying...")
                     FixClick(585, 190)  ; Click close
                     return
                 }
-                FixClick(300, 385)  ; Enter captcha
 
                 startTime := A_TickCount
                 while (A_TickCount - startTime < 20000) {  ; Check for 20 seconds
-                    if !(ok := FT(&X, &Y, 746, 514, 789, 530, 0, 0, AreaText)) {
+                    if !(CheckForLobbySettings()) {
                         AddToLog("Area text gone - matchmaking successful")
+                        matchmakingSince := 0
                         return true
                     }
                     Sleep(200)  ; Check every 200ms
@@ -135,7 +138,7 @@ HandleContractEnd() {
         }
 
         ; Check for both lobby texts
-        if (ok := FT(&X, &Y, 80, 85, 739, 224, 0, 0, LobbyText) or (ok := FT(&X, &Y, 80, 85, 739, 224, 0, 0, LobbyText2))) {
+        if (EndButtonsVisible()) {
             AddToLog("Found Lobby Text - proceeding with contract end options")
             Sleep(2000)  ; Wait for UI to settle
 

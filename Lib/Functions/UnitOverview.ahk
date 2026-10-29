@@ -13,10 +13,12 @@ global overviewCards := []
 ; depends on rows landing on exact pixel positions. It never scrolls above the first row.
 ;   rows    - fully visible rows on screen, top to bottom; each is [left card or 0, right card or 0]
 ;   topRow  - which list row is the first fully visible row (1 = first row of the list)
-global overviewScroll := { known: false, total: -1, rows: [], leftX: 0, rightX: 0, topRow: 1, totalRows: 0 }
+;   look    - RowPortraits(rows), so the next step and a reopen don't have to read the cards again
+global overviewScroll := { known: false, total: -1, rows: [], look: "", leftX: 0, rightX: 0, topRow: 1, totalRows: 0 }
 global overviewError := "" ; Why the last scroll/lookup failed, shown by the debug test
 global stageEnded := false   ; Set when the results screen shows up mid placing/upgrading
 global lastFullStageCheck := 0
+global lastUnitRecount := 0  ; When the overview was last recounted (ResyncUnitCount)
 
 ; verify = true checks the level actually went up, and returns "unaffordable" if it didn't
 UpgradeViaOverview(coord, upgradeLimit := "", verify := false) {
@@ -46,16 +48,36 @@ UpgradeViaOverview(coord, upgradeLimit := "", verify := false) {
 
     FixClick(card.upgX, card.upgY)
     Sleep(150)
-    if (!verify || level.total = 0) ; Can't read the bar, so can't tell - assume it went through
+    if (!verify || level.total = 0) { ; Can't read the bar, so can't tell - assume it went through
+        RefreshCardLook(card)
         return "upgraded"
+    }
 
     ; Give the bar time to update - calling a slow update "unaffordable" would upgrade the unit twice
     loop 12 {
         Sleep(100)
-        if (ReadOverviewLevel(card).lit > level.lit || IsOverviewCardMaxed(card))
+        if (ReadOverviewLevel(card).lit > level.lit || IsOverviewCardMaxed(card)) {
+            RefreshCardLook(card)
             return "upgraded"
+        }
     }
     return "unaffordable"
+}
+
+; The card's level changed - update its saved look so scroll matching compares against what's on screen
+RefreshCardLook(card) {
+    global overviewScroll
+    sc := overviewScroll
+    if !IsObject(sc.look)
+        return
+    for i, row in sc.rows {
+        loop 2 {
+            if (row[A_Index] = card && i <= sc.look.Length) {
+                sc.look[i][A_Index] := CardLook(card)
+                return
+            }
+        }
+    }
 }
 
 OpenUnitOverview() {
@@ -72,7 +94,10 @@ OpenUnitOverview() {
             if (IsUnitOverviewOpen()) {
                 Sleep(300) ; Let the slide-in animation finish before trusting positions
                 ScanOverviewCards()
-                overviewScroll.known := false ; The list may have been scrolled while closed
+                ; Closing doesn't scroll the list, so the last position is usually still right - check it
+                ; instead of scrolling to the bottom and back up every time the overview reopens
+                if overviewScroll.known
+                    overviewScroll.known := OverviewStillWhereLeft()
                 return true
             }
         }
@@ -96,7 +121,28 @@ CloseUnitOverview() {
             Sleep(400)
         }
     }
-    overviewScroll.known := false
+    ; overviewScroll.known is kept - OpenUnitOverview checks the list is still where it was left
+}
+
+; After reopening: are the rows on screen the same ones that were showing when it closed? Compares the
+; cards with the saved look, and with the look one row up/down - if the list could have moved one row
+; without looking different (rows of identical units), it isn't trusted
+OverviewStillWhereLeft() {
+    global overviewScroll
+    sc := overviewScroll
+    if !IsObject(sc.look)
+        return false
+    WaitForOverviewSettle()
+    rows := OverviewRows()
+    if (rows = "" || rows.Length != sc.rows.Length || !RowsMatchList(rows, sc.topRow, sc.total))
+        return false
+    look := RowPortraits(rows)
+    same := RowsDistance(look, sc.look, 0)
+    up := RowsDistance(look, sc.look, -1), down := RowsDistance(look, sc.look, 1)
+    if (same = "" || same > 15 || (up != "" && up <= same + 25) || (down != "" && down <= same + 25))
+        return false
+    sc.rows := rows, sc.look := look
+    return true
 }
 
 ; Open if any cards are showing, or - with no units placed yet - if the panel itself is showing
@@ -157,7 +203,7 @@ OverviewHasUnits(total) {
 ; only shows whether the count is odd or even (last row 1 or 2 cards) - 8 and 10 units look the same
 ; there. So for long lists only the exact count `atLeast` is accepted: guessing a higher count could
 ; record units that don't exist and throw every unit's position in the overview off by one
-OverviewUnitCount(atLeast) {
+OverviewUnitCount(atLeast, scroll := true) {
     global overviewCards
     if !OpenUnitOverview()
         return 0
@@ -171,7 +217,7 @@ OverviewUnitCount(atLeast) {
 
     if (atLeast <= 6)
         return 0 ; 7+ cards are showing, so it can't be this few
-    return HomeOverviewToBottom(atLeast, true, true) ? atLeast : 0
+    return HomeOverviewToBottom(atLeast, scroll, true) ? atLeast : 0
 }
 
 TotalPlacedUnits() {
@@ -184,8 +230,21 @@ TotalPlacedUnits() {
     return total
 }
 
-; Returns the card for the unit placed at position `placementIndex`, scrolling the list if needed
+; Returns the card for the unit placed at position `placementIndex`, scrolling the list if needed.
+; If it can't be found, the recorded unit count may be wrong - recount the overview, fix the records
+; and try once more, so one miscount doesn't break upgrading for the rest of the match
 GetOverviewCard(placementIndex, total) {
+    card := FindOverviewCard(placementIndex, total)
+    if (!card && ResyncUnitCount()) {
+        total := TotalPlacedUnits()
+        if (placementIndex > total)
+            return false ; This unit was never really placed - it was just forgotten
+        card := FindOverviewCard(placementIndex, total)
+    }
+    return card
+}
+
+FindOverviewCard(placementIndex, total) {
     global overviewScroll
     sc := overviewScroll
 
@@ -217,11 +276,7 @@ HomeOverviewToBottom(total, scroll := true, quiet := false) {
     ; The bottom is a hard stop, so send far more notches than the list has rows (covers dropped inputs)
     ; and then wait for the cards to stop moving
     if scroll {
-        notches := Ceil(total / 2) * 2 + 10
-        while (notches > 0) {
-            OverviewWheel("WheelDown", Min(notches, 5))
-            notches -= 5
-        }
+        OverviewWheel("WheelDown", Ceil(total / 2) * 2 + 10)
         WaitForOverviewSettle()
     }
 
@@ -257,7 +312,7 @@ HomeOverviewToBottom(total, scroll := true, quiet := false) {
         return false
     }
 
-    sc.rows := rows, sc.topRow := topRow, sc.totalRows := totalRows
+    sc.rows := rows, sc.look := RowPortraits(rows), sc.topRow := topRow, sc.totalRows := totalRows
     sc.total := total
     sc.known := true
     return true
@@ -307,7 +362,7 @@ OverviewStep(dir) {
     sc := overviewScroll
 
     before := sc.rows
-    beforeLook := RowPortraits(before)
+    beforeLook := IsObject(sc.look) ? sc.look : RowPortraits(before)
     loop 3 { ; Retry dropped wheel inputs
         OverviewWheel(dir < 0 ? "WheelUp" : "WheelDown", 1)
         WaitForOverviewSettle()
@@ -343,7 +398,7 @@ OverviewStep(dir) {
                 . OverviewCardCount(rows) " in " rows.Length " rows) don't fit that. Cards seen: " OverviewYs()
             return false
         }
-        sc.rows := rows, sc.topRow := newTop
+        sc.rows := rows, sc.look := look, sc.topRow := newTop
         return true
     }
     overviewError := "Scrolling " (dir < 0 ? "up" : "down") " didn't move the list (3 tries)"
@@ -355,6 +410,14 @@ OverviewStep(dir) {
 OverviewRows() {
     global overviewCards, overviewScroll
     sc := overviewScroll
+    ; Both columns on screen - take their positions from here (positions learned earlier can be stale)
+    minX := "", maxX := ""
+    for card in overviewCards {
+        if card.full
+            minX := (minX = "") ? card.x1 : Min(minX, card.x1), maxX := (maxX = "") ? card.x1 : Max(maxX, card.x1)
+    }
+    if (minX != "" && maxX - minX > overviewCards[1].scale * 100)
+        sc.leftX := minX, sc.rightX := maxX
     rows := [], rowY := ""
     for card in overviewCards { ; Already in reading order
         if !card.full
@@ -431,6 +494,199 @@ RowsDistance(look, beforeLook, shift) {
     return count ? total / count : ""
 }
 
+; Counts the units in the Unit Overview without knowing how many there should be. Lists that fit on
+; screen are counted directly. Longer ones: go to the bottom (all rows line up, the last row shows if the
+; count is odd), then scroll up one notch at a time counting the rows that come into view, until the list
+; stops moving. Returns -1 if it couldn't tell
+CountOverviewUnits() {
+    global overviewCards, overviewScroll
+    sc := overviewScroll
+    if !OpenUnitOverview()
+        return -1
+    WaitForOverviewSettle()
+    if (overviewCards.Length = 0)
+        return IsOverviewPanelOpen() ? 0 : -1
+
+    visible := 0
+    for card in overviewCards
+        visible += card.full ? 1 : 0
+    if (visible <= 6 && visible = overviewCards.Length)
+        return visible
+
+    loop 8
+        OverviewWheel("WheelDown", 5)
+    WaitForOverviewSettle()
+    sc.known := false
+    rows := OverviewRows()
+    if (rows = "" || rows.Length = 0)
+        return -1
+    lastOdd := !rows[rows.Length][2]
+    count := rows.Length
+    look := RowPortraits(rows), tops := RowTops(rows)
+    tolerance := overviewCards[1].scale * 10
+
+    still := 0, foundTop := false
+    loop 40 {
+        OverviewWheel("WheelUp", 1)
+        WaitForOverviewSettle()
+        newRows := OverviewRows()
+        if (newRows = "" || newRows.Length = 0)
+            return -1
+        newTops := RowTops(newRows)
+        aligned := (newTops.Length = tops.Length)
+        if aligned {
+            for i, y in newTops {
+                if (Abs(y - tops[i]) > tolerance)
+                    aligned := false
+            }
+        }
+        ; At the top the last notch only moves part of a row, so the rows stop lining up - that notch
+        ; brought the first row into view
+        if !aligned {
+            count += 1, foundTop := true
+            break
+        }
+        ; Lined up: moved one row (new row i looks like old row i - 1) or didn't move (looks like old row i).
+        ; Rows of identical units look the same either way - count those as a move, since notches from the
+        ; bottom almost always move
+        newLook := RowPortraits(newRows)
+        up := RowsDistance(newLook, look, -1), same := RowsDistance(newLook, look, 0)
+        clearlyStill := (same != "" && same <= 8 && (up = "" || up > same + 25))
+        look := newLook
+        if !clearlyStill {
+            count += 1, still := 0
+            continue
+        }
+        still += 1
+        if (still >= 3) { ; Didn't move for 3 notches in a row (one can be a dropped input) - at the top
+            foundTop := true
+            break
+        }
+    }
+    sc.known := false
+    if !foundTop ; 40 notches and never reached the top - the rows must all look alike, so it can't tell
+        return -1
+    return count * 2 - (lastOdd ? 1 : 0)
+}
+
+RowTops(rows) {
+    tops := []
+    for row in rows
+        tops.Push(row[1] ? row[1].y1 : row[2].y1)
+    return tops
+}
+
+; Recounts the Unit Overview and makes the script's records match it: units it didn't know about are
+; added, recorded units that aren't there are forgotten (so they get placed again). Units the script gave
+; up on reading get another chance. At most once every 20 seconds. Returns true if it recounted
+ResyncUnitCount() {
+    global lastUnitRecount
+    if (A_TickCount - lastUnitRecount < 20000)
+        return false
+    lastUnitRecount := A_TickCount
+
+    recorded := PlacedUnitCount()
+    real := CountOverviewUnits()
+    if (real < 0) {
+        AddToLog("Couldn't recount the Unit Overview - carrying on")
+        return false
+    }
+    ; Units don't vanish, so a much lower count means the cards were misread - don't throw records away
+    if (real < recorded - 3 || real > recorded + 4) {
+        AddToLog("Recounted " real " units in the Unit Overview but " recorded " were recorded - too far off to trust, carrying on")
+        return false
+    }
+    if (real = recorded)
+        AddToLog("Recounted the Unit Overview: " real " units, as recorded")
+    else
+        AdjustRecordedUnits(real)
+    ResetOverviewSkips()
+    return true
+}
+
+AdjustRecordedUnits(real) {
+    global placedCounts, lastPlacementAttempt
+    recorded := PlacedUnitCount()
+    if (real > recorded) {
+        ; Most likely the last placement that looked like it failed went through after all
+        slot := IsObject(lastPlacementAttempt) ? lastPlacementAttempt.slot : NewestRecordedUnit().slot
+        AddToLog("The Unit Overview has " real " units but " recorded " were recorded - counting the "
+            . (real - recorded = 1 ? "extra one" : (real - recorded) " extra") " as Unit " slot)
+        loop real - recorded
+            AddUnrecordedUnit(slot)
+    } else {
+        AddToLog("The Unit Overview has " real " units but " recorded " were recorded - forgetting the newest "
+            . (recorded - real) ", they'll be placed again")
+        loop recorded - real
+            ForgetNewestUnit()
+    }
+}
+
+NewestRecordedUnit() {
+    global successfulCoordinates, maxedCoordinates
+    newest := { slot: 1, placementIndex: 0 }
+    for list in [successfulCoordinates, maxedCoordinates] {
+        for coord in list {
+            if (coord.placementIndex > newest.placementIndex)
+                newest := coord
+        }
+    }
+    return newest
+}
+
+; Records a unit that's in the overview but was never recorded, as the newest unit
+AddUnrecordedUnit(slot) {
+    global successfulCoordinates, placedCounts, lastPlacementAttempt
+    spot := IsObject(lastPlacementAttempt) ? lastPlacementAttempt : { x: 0, y: 0 }
+    successfulCoordinates.Push({
+        x: spot.x,
+        y: spot.y,
+        slot: slot,
+        upgradePriority: GetUpgradePriority(slot),
+        placementIndex: PlacedUnitCount() + 1,
+        autoUpgrade: false,
+        hasAbility: !autoAbilityDisabled && abilityEnabled%slot%.Value ; The ability timer turns it on later
+    })
+    if !placedCounts.Has(slot)
+        placedCounts[slot] := 0
+    placedCounts[slot] += 1
+}
+
+; Drops the newest recorded unit (it isn't really there) and lets its slot be placed again
+ForgetNewestUnit() {
+    global successfulCoordinates, maxedCoordinates, placedCounts, strategyCapped, placementCapped
+    coord := NewestRecordedUnit()
+    if (coord.placementIndex = 0)
+        return
+    for list in [successfulCoordinates, maxedCoordinates] {
+        for i, c in list {
+            if (c = coord) {
+                list.RemoveAt(i)
+                break
+            }
+        }
+    }
+    coord.removed := true, coord.strategyDone := true ; Anything still holding it skips it
+    if (placedCounts.Has(coord.slot) && placedCounts[coord.slot] > 0)
+        placedCounts[coord.slot] -= 1
+    if (IsObject(strategyCapped) && strategyCapped.Has(coord.slot))
+        strategyCapped.Delete(coord.slot)
+    if (IsObject(placementCapped) && placementCapped.Has(coord.slot))
+        placementCapped.Delete(coord.slot)
+}
+
+; Units skipped because their card couldn't be read get upgraded again
+ResetOverviewSkips() {
+    global successfulCoordinates, maxedCoordinates
+    for list in [successfulCoordinates, maxedCoordinates] {
+        for coord in list {
+            coord.strategySkips := 0
+            if (coord.HasOwnProp("skippedOut") && coord.skippedOut)
+                coord.skippedOut := false, coord.strategyDone := false
+        }
+    }
+}
+
 ; The list may glide into place after a wheel notch - rescan until card positions stop changing
 WaitForOverviewSettle() {
     global overviewCards
@@ -461,9 +717,17 @@ PortraitSample(card) {
     x1 := card.x1 - 72 * s, x2 := card.x1 - 12 * s
     y1 := centerY - 25 * s, y2 := centerY + 15 * s
     colors := []
+    try {
+        WinGetClientPos(&cx, &cy, , , rblxID)
+        FindText().ScreenShot(cx + Round(x1), cy + Round(y1), cx + Round(x2), cy + Round(y2))
+    } catch {
+        loop 9
+            colors.Push(0)
+        return colors
+    }
     for fy in [0.25, 0.5, 0.75] {
         for fx in [0.25, 0.5, 0.75] {
-            try c := PixelGetColor(Round(x1 + (x2 - x1) * fx), Round(y1 + (y2 - y1) * fy))
+            try c := FindText().GetColor(cx + Round(x1 + (x2 - x1) * fx), cy + Round(y1 + (y2 - y1) * fy), 0)
             catch
                 c := 0
             colors.Push(Integer(c))
@@ -483,7 +747,7 @@ OverviewWheel(direction, times) {
     Scroll(times, direction, 30)
     ; Park the mouse above the cards (on the panel title) so hover effects can't change what gets scanned
     MouseMove(first.upgX, Max(5, Round(first.y1 - 110 * first.scale)))
-    Sleep(300)
+    Sleep(150)
 }
 
 ScanOverviewCards() {
